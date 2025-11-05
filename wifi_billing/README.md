@@ -110,6 +110,6 @@ For inquiries & support, reach out via:
 
 *(Paid Consultations)* only
 
-📧 Email: gideonpapa9@gmail.com
+📧 Email: mwakidenice@gmail.com
 
-📱 WhatsApp: https://wa.me/254756521055
+📱 WhatsApp: https://wa.me/254798750585
