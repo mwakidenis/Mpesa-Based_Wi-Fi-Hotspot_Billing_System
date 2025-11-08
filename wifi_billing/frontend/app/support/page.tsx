@@ -169,6 +169,8 @@ export default function SupportPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [wsConnected, setWsConnected] = useState(false)
+  const [viewRequestsPhone, setViewRequestsPhone] = useState("")
+  const [showRequestViewer, setShowRequestViewer] = useState(false)
 
   // Check authentication and load user requests
   useEffect(() => {
@@ -193,6 +195,10 @@ export default function SupportPage() {
         if (user?.phone) {
           loadUserRequests(user.phone)
         }
+        // Also refresh the viewer if it's showing the same phone
+        if (showRequestViewer && viewRequestsPhone && viewRequestsPhone === user?.phone) {
+          loadUserRequests(viewRequestsPhone)
+        }
       }
     }
 
@@ -207,7 +213,7 @@ export default function SupportPage() {
       window.removeEventListener("support_request_update", handleWsMessage as EventListener)
       window.removeEventListener("websocket_connected", handleWsConnection as EventListener)
     }
-  }, [user?.phone])
+  }, [user?.phone, showRequestViewer, viewRequestsPhone])
 
   // Auto-refresh user requests every 5 seconds when authenticated (fallback)
   useEffect(() => {
@@ -245,6 +251,9 @@ export default function SupportPage() {
   }, [isAuthenticated, user?.phone])
 
   const loadUserRequests = async (phone: string) => {
+    if (!phone) return
+
+    setLoadingRequests(true)
     try {
       const response = await apiClient.getUserSupportRequests(phone)
       if (response.success && response.data) {
@@ -367,20 +376,47 @@ export default function SupportPage() {
             </p>
           </div>
 
-          {/* User Support Requests - Show for authenticated users */}
-          {isAuthenticated && (
-            <div className="max-w-4xl mx-auto mb-16">
-              <Card className="bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10">
-                <CardHeader>
-                  <CardTitle className="text-slate-900 dark:text-white">
-                    Your Support Requests
-                  </CardTitle>
-                </CardHeader>
+          {/* Support Request Viewer - For all users */}
+          <div className="max-w-4xl mx-auto mb-16">
+            <Card className="bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10">
+              <CardHeader>
+                <CardTitle className="text-slate-900 dark:text-white flex items-center justify-between">
+                  <span>View Support Requests</span>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      {wsConnected ? 'Real-time' : 'Polling'}
+                    </span>
+                  </div>
+                </CardTitle>
+                <div className="flex gap-2 mt-4">
+                  <Input
+                    placeholder="Enter phone number to view requests..."
+                    value={viewRequestsPhone}
+                    onChange={(e) => setViewRequestsPhone(e.target.value)}
+                    className="bg-white/50 dark:bg-slate-700/50 border-slate-300 dark:border-white/10"
+                  />
+                  <Button
+                    onClick={() => {
+                      if (viewRequestsPhone.trim()) {
+                        loadUserRequests(viewRequestsPhone.trim())
+                        setShowRequestViewer(!showRequestViewer)
+                      }
+                    }}
+                    variant={showRequestViewer ? "default" : "outline"}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    disabled={!viewRequestsPhone.trim()}
+                  >
+                    {showRequestViewer ? 'Hide' : 'View'} Requests
+                  </Button>
+                </div>
+              </CardHeader>
+              {showRequestViewer && (
                 <CardContent>
                   {loadingRequests ? (
                     <div className="flex items-center justify-center py-8">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">Loading your requests...</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">Loading requests...</p>
                     </div>
                   ) : userRequests.length > 0 ? (
                     <div className="space-y-4">
@@ -404,13 +440,57 @@ export default function SupportPage() {
                         </div>
                       ))}
                       <div className="text-center mt-4">
-                        <div className="flex items-center justify-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
-                            {wsConnected ? 'Real-time updates active' : 'Status updates every 5 seconds'}
-                          </p>
-                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Status updates automatically • {wsConnected ? 'Real-time updates active' : 'Updates every 5 seconds'}
+                        </p>
                       </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-slate-600 dark:text-slate-400 mb-2">
+                        No support requests found for this phone number.
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-500">
+                        Enter a phone number above to view associated support requests.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              )}
+            </Card>
+          </div>
+
+          {/* User Support Requests - Show for authenticated users */}
+          {isAuthenticated && (
+            <div className="max-w-4xl mx-auto mb-16">
+              <Card className="bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10">
+                <CardHeader>
+                  <CardTitle className="text-slate-900 dark:text-white">
+                    Your Support Requests ({userRequests.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {userRequests.length > 0 ? (
+                    <div className="space-y-4">
+                      {userRequests
+                        .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                        .map((request: any) => (
+                        <div key={request.id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600 hover:shadow-md transition-shadow">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h4 className="font-medium text-slate-900 dark:text-white">{request.name}</h4>
+                              {getStatusBadge(request.status)}
+                            </div>
+                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">{request.message}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-500">
+                              Transaction: {request.transactionCode} • {new Date(request.createdAt).toLocaleDateString()} • {new Date(request.createdAt).toLocaleTimeString()}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs text-slate-400 dark:text-slate-500">ID: {request.id}</p>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   ) : (
                     <div className="text-center py-8">
