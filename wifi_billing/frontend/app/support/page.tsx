@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Phone,
   Mail,
@@ -16,6 +16,10 @@ import {
   Send,
   Users,
   User,
+  RefreshCw,
+  CheckCircle,
+  AlertCircle,
+  XCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -27,7 +31,7 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { ToastProvider } from "@/components/toast-provider"
 import { toast } from "sonner"
-import { apiClient } from "@/lib/api"
+import { apiClient, wsClient } from "@/lib/api"
 import { useDynamicTitle } from "@/hooks/use-dynamic-title"
 
 const contactMethods = [
@@ -151,6 +155,7 @@ const FAQItem = ({ question, answer }) => {
 }
 
 export default function SupportPage() {
+  useDynamicTitle("Support")
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [contactForm, setContactForm] = useState({
@@ -159,6 +164,128 @@ export default function SupportPage() {
     transactionCode: "",
     message: "",
   })
+  const [userRequests, setUserRequests] = useState<any[]>([])
+  const [loadingRequests, setLoadingRequests] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [user, setUser] = useState<any>(null)
+  const [wsConnected, setWsConnected] = useState(false)
+
+  // Check authentication and load user requests
+  useEffect(() => {
+    const token = localStorage.getItem('user_token')
+    const userData = localStorage.getItem('user_data')
+    if (token && userData) {
+      setIsAuthenticated(true)
+      const parsedUser = JSON.parse(userData)
+      setUser(parsedUser)
+      loadUserRequests(parsedUser.phone)
+      // Connect to WebSocket for real-time updates
+      wsClient.connect(parsedUser.phone)
+    }
+  }, [])
+
+  // WebSocket connection status and real-time updates
+  useEffect(() => {
+    const handleWsMessage = (event: CustomEvent) => {
+      const data = event.detail
+      if (data.type === "status_update" || data.type === "new_request") {
+        // Refresh user requests when we get a real-time update
+        if (user?.phone) {
+          loadUserRequests(user.phone)
+        }
+      }
+    }
+
+    window.addEventListener("support_request_update", handleWsMessage as EventListener)
+
+    return () => {
+      window.removeEventListener("support_request_update", handleWsMessage as EventListener)
+    }
+  }, [user?.phone])
+
+  // Auto-refresh user requests every 5 seconds when authenticated (fallback)
+  useEffect(() => {
+    if (!isAuthenticated || !user?.phone) return
+
+    const interval = setInterval(() => {
+      loadUserRequests(user.phone)
+    }, 5000) // 5 seconds for near real-time updates
+
+    return () => clearInterval(interval)
+  }, [isAuthenticated, user?.phone])
+
+  // Store requests in localStorage for persistence
+  useEffect(() => {
+    if (userRequests.length > 0 && user?.phone) {
+      const storageKey = `support_requests_${user.phone}`
+      localStorage.setItem(storageKey, JSON.stringify(userRequests))
+    }
+  }, [userRequests, user?.phone])
+
+  // Load cached requests on mount
+  useEffect(() => {
+    if (isAuthenticated && user?.phone) {
+      const storageKey = `support_requests_${user.phone}`
+      const cached = localStorage.getItem(storageKey)
+      if (cached) {
+        try {
+          const parsedRequests = JSON.parse(cached)
+          setUserRequests(parsedRequests)
+        } catch (error) {
+          console.error("Error parsing cached requests:", error)
+        }
+      }
+    }
+  }, [isAuthenticated, user?.phone])
+
+  const loadUserRequests = async (phone: string) => {
+    try {
+      const response = await apiClient.getUserSupportRequests(phone)
+      if (response.success && response.data) {
+        // Server data takes precedence - this is the source of truth
+        const serverRequests = response.data
+
+        // Update state with server data
+        setUserRequests(serverRequests)
+
+        // Update cache with latest server data
+        const storageKey = `support_requests_${phone}`
+        localStorage.setItem(storageKey, JSON.stringify(serverRequests))
+
+        console.log(`Updated ${serverRequests.length} support requests for user ${phone}`)
+      } else {
+        throw new Error(response.error || "Failed to fetch requests")
+      }
+    } catch (error) {
+      console.error("Error loading user requests:", error)
+      // On error, try to load from cache as fallback
+      const storageKey = `support_requests_${phone}`
+      const cached = localStorage.getItem(storageKey)
+      if (cached) {
+        try {
+          const cachedRequests = JSON.parse(cached)
+          setUserRequests(cachedRequests)
+          console.log(`Loaded ${cachedRequests.length} cached requests as fallback`)
+        } catch (cacheError) {
+          console.error("Error loading cached requests:", cacheError)
+        }
+      }
+    } finally {
+      setLoadingRequests(false)
+    }
+  }
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      pending: { color: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400", label: "Pending" },
+      in_progress: { color: "bg-blue-500/10 text-blue-600 dark:text-blue-400", label: "In Progress" },
+      resolved: { color: "bg-green-500/10 text-green-600 dark:text-green-400", label: "Resolved" },
+      closed: { color: "bg-gray-500/10 text-gray-600 dark:text-gray-400", label: "Closed" },
+    } as const
+    type StatusKey = keyof typeof statusConfig
+    const config = statusConfig[status as StatusKey] || statusConfig.pending
+    return <Badge className={`${config.color} border-0`}>{config.label}</Badge>
+  }
 
   const filteredFAQs = faqs.filter((category) => {
     if (selectedCategory !== "all" && category.category.toLowerCase() !== selectedCategory) {
@@ -192,10 +319,14 @@ export default function SupportPage() {
           transactionCode: "",
           message: "",
         })
+        // Refresh user requests if authenticated
+        if (isAuthenticated && user?.phone) {
+          loadUserRequests(user.phone)
+        }
       } else {
         throw new Error(response.error || "Failed to send message")
       }
-    } catch (error) {
+    } catch (error: any) {
       toast.error("Failed to send message", {
         id: "contact-form",
         description: error.message || "Please try again later",
@@ -229,6 +360,66 @@ export default function SupportPage() {
               Get instant support for all your WiFi and payment questions. Our team is here to help you 24/7.
             </p>
           </div>
+
+          {/* User Support Requests - Show for authenticated users */}
+          {isAuthenticated && (
+            <div className="max-w-4xl mx-auto mb-16">
+              <Card className="bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10">
+                <CardHeader>
+                  <CardTitle className="text-slate-900 dark:text-white">
+                    Your Support Requests
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {loadingRequests ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">Loading your requests...</p>
+                    </div>
+                  ) : userRequests.length > 0 ? (
+                    <div className="space-y-4">
+                      {userRequests
+                        .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                        .map((request: any) => (
+                        <div key={request.id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600 hover:shadow-md transition-shadow">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h4 className="font-medium text-slate-900 dark:text-white">{request.name}</h4>
+                              {getStatusBadge(request.status)}
+                            </div>
+                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">{request.message}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-500">
+                              Transaction: {request.transactionCode} • {new Date(request.createdAt).toLocaleDateString()} • {new Date(request.createdAt).toLocaleTimeString()}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs text-slate-400 dark:text-slate-500">ID: {request.id}</p>
+                          </div>
+                        </div>
+                      ))}
+                      <div className="text-center mt-4">
+                        <div className="flex items-center justify-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            {wsConnected ? 'Real-time updates active' : 'Status updates every 5 seconds'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-slate-600 dark:text-slate-400 mb-2">
+                        You haven't submitted any support requests yet.
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-500">
+                        Submit a request below and it will appear here with real-time status updates.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           {/* Contact Form - Moved to Top */}
           <div className="max-w-2xl mx-auto mb-16" id="contact">
