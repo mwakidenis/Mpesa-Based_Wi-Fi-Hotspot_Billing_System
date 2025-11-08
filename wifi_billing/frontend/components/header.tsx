@@ -79,7 +79,7 @@ export function Header() {
                     href="/admin"
                     className="text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors"
                   >
-                    Admin Dashboard
+                    Admin Panel
                   </Link>
                 )}
                 <Button
@@ -153,7 +153,7 @@ export function Header() {
                       className="text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors"
                       onClick={() => setIsMenuOpen(false)}
                     >
-                      Admin Dashboard
+                      Admin Panel
                     </Link>
                   )}
                   <Button

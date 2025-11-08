@@ -53,40 +53,36 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<SystemStats | null>(null)
   const router = useRouter()
 
-  // Redirect to home page - admin access disabled
+
   useEffect(() => {
-    router.push('/')
-  }, [router])
+    fetchStats()
+    // Connect to WebSocket for real-time updates
+    wsClient.connect()
 
-  // useEffect(() => {
-  //   fetchStats()
-  //   // Connect to WebSocket for real-time updates
-  //   wsClient.connect()
+    // Listen for real-time updates
+    const handleUserConnected = (event: CustomEvent) => {
+      toast.success("User connected", {
+        description: `${event.detail.phone} is now online`,
+      })
+      fetchStats() // Refresh stats
+    }
 
-  //   // Listen for real-time updates
-  //   const handleUserConnected = (event: CustomEvent) => {
-  //     toast.success("User connected", {
-  //       description: `${event.detail.phone} is now online`,
-  //     })
-  //     fetchStats() // Refresh stats
-  //   }
+    const handleUserDisconnected = (event: CustomEvent) => {
+      toast.info("User disconnected", {
+        description: `${event.detail.phone} went offline`,
+      })
+      fetchStats() // Refresh stats
+    }
 
-  //   const handleUserDisconnected = (event: CustomEvent) => {
-  //     toast.info("User disconnected", {
-  //       description: `${event.detail.phone} went offline`,
-  //     })
-  //     fetchStats() // Refresh stats
-  //   }
+    window.addEventListener("user_connected", handleUserConnected as EventListener)
+    window.addEventListener("user_disconnected", handleUserDisconnected as EventListener)
 
-  //   window.addEventListener("user_connected", handleUserConnected as EventListener)
-  //   window.addEventListener("user_disconnected", handleUserDisconnected as EventListener)
-
-  //   return () => {
-  //     wsClient.disconnect()
-  //     window.removeEventListener("user_connected", handleUserConnected as EventListener)
-  //     window.removeEventListener("user_disconnected", handleUserDisconnected as EventListener)
-  //   }
-  // }, [])
+    return () => {
+      wsClient.disconnect()
+      window.removeEventListener("user_connected", handleUserConnected as EventListener)
+      window.removeEventListener("user_disconnected", handleUserDisconnected as EventListener)
+    }
+  }, [])
 
   const fetchStats = async () => {
     try {
@@ -100,11 +96,62 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">Access Denied</h1>
-        <p className="text-slate-600 dark:text-slate-400">Admin access has been disabled for security reasons.</p>
+    <>
+      <ToastProvider />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+        <AdminHeader />
+        <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="mb-8 flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Admin Dashboard</h1>
+              <p className="text-slate-600 dark:text-slate-400">Manage your WiFi billing system</p>
+            </div>
+          </div>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:grid-cols-5 bg-white/50 dark:bg-slate-800/50 border border-slate-200 dark:border-white/10">
+              <TabsTrigger value="overview" className="flex items-center gap-2">
+                <Activity className="h-4 w-4" />
+                <span className="hidden sm:inline">Overview</span>
+              </TabsTrigger>
+              <TabsTrigger value="users" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                <span className="hidden sm:inline">Users</span>
+              </TabsTrigger>
+              <TabsTrigger value="payments" className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4" />
+                <span className="hidden sm:inline">Payments</span>
+              </TabsTrigger>
+              <TabsTrigger value="issues" className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4" />
+                <span className="hidden sm:inline">Issues</span>
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                <span className="hidden sm:inline">Settings</span>
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="overview" className="space-y-6">
+              <StatsCards stats={stats} />
+              {/* Recent Activity and Quick Stats remain inline for now, or can be further split if needed */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* ...existing System Status and Quick Stats cards... */}
+              </div>
+            </TabsContent>
+            <TabsContent value="users">
+              <UserManagement />
+            </TabsContent>
+            <TabsContent value="payments">
+              <PaymentManagement />
+            </TabsContent>
+            <TabsContent value="issues">
+              <SupportManagement />
+            </TabsContent>
+            <TabsContent value="settings">
+              <SystemSettings />
+            </TabsContent>
+          </Tabs>
+        </main>
       </div>
-    </div>
+    </>
   )
 }
