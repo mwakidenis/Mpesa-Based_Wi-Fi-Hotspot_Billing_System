@@ -76,21 +76,22 @@ const authMiddleware = (req, res, next) => {
 };
 
 // -------------------- ADMIN LOGIN (Hidden Route) --------------------
-app.post("/api/admin/login", (req, res) => {
-  const { username, password } = req.body;
+// Disabled for security reasons
+// app.post("/api/admin/login", (req, res) => {
+//   const { username, password } = req.body;
 
-  if (
-    username === process.env.ADMIN_USERNAME &&
-    password === process.env.ADMIN_PASSWORD
-  ) {
-    const token = jwt.sign({ username, role: "admin" }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
-    });
-    return res.json({ success: true, token });
-  } else {
-    return res.status(401).json({ success: false, error: "Invalid credentials" });
-  }
-});
+//   if (
+//     username === process.env.ADMIN_USERNAME &&
+//     password === process.env.ADMIN_PASSWORD
+//   ) {
+//     const token = jwt.sign({ username, role: "admin" }, process.env.JWT_SECRET, {
+//       expiresIn: "1h",
+//     });
+//     return res.json({ success: true, token });
+//   } else {
+//     return res.status(401).json({ success: false, error: "Invalid credentials" });
+//   }
+// });
 
 // -------------------- ADMIN DASHBOARD --------------------
 
@@ -111,10 +112,7 @@ app.get("/admin/payments", authMiddleware, async (req, res) => {
 // Get summary
 app.get("/admin/summary", authMiddleware, async (req, res) => {
   try {
-    const totalUsers = await prisma.payment.count({
-      distinct: ["phone"],
-      where: { status: "completed" },
-    });
+    const totalUsers = await prisma.authUser.count();
 
     const totalRevenueAggregate = await prisma.payment.aggregate({
       _sum: { amount: true },
@@ -246,7 +244,7 @@ app.get("/", (req, res) => {
 // -------------------- START SERVER --------------------
 
 // -------------------- START SERVER --------------------
-server.listen(PORT, () => {
+app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
   console.log(`WebSocket server ready for real-time updates`);
 });
