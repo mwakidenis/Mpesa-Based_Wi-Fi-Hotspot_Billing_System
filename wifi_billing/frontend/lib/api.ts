@@ -58,11 +58,39 @@ export interface SystemStats {
   blockedUsers: number
 }
 
+export interface LoanEligibility {
+  eligible: boolean
+  loanAmount?: number
+  reason?: string
+  recentPurchases?: number
+  mostFrequentAmount?: number
+}
+
+export interface Loan {
+  id: number
+  userId: number
+  amount: number
+  status: 'active' | 'repaid' | 'overdue' | 'defaulted'
+  borrowedAt: string
+  dueAt: string
+  repaidAt?: string
+  repaymentAmount?: number
+  interestRate: number
+  createdAt: string
+  updatedAt: string
+  user: {
+    username: string
+    phone: string
+  }
+}
+
 class ApiClient {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
     try {
-      // Get auth token for protected routes
-      const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null
+      // Get auth token for protected routes - check both admin and user tokens
+      const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null
+      const userToken = typeof window !== 'undefined' ? localStorage.getItem('user_token') : null
+      const token = adminToken || userToken
       const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
 
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -226,7 +254,7 @@ class ApiClient {
     user: { id: number; username: string; email: string | null; phone: string }
     token: string
   }>> {
-    return this.request("/auth/register", {
+    return this.request("/api/auth/register", {
       method: "POST",
       body: JSON.stringify(data),
     })
@@ -236,7 +264,7 @@ class ApiClient {
     user: { id: number; username: string; email: string | null; phone: string }
     token: string
   }>> {
-    return this.request("/auth/login", {
+    return this.request("/api/auth/login", {
       method: "POST",
       body: JSON.stringify(data),
     })
@@ -337,6 +365,54 @@ class ApiClient {
   async getNetworkStatus(): Promise<ApiResponse<{ status: string; uptime: number; connectedUsers: number }>> {
     return this.request("/api/network/status")
   }
+
+  // Loan APIs
+  async checkLoanEligibility(): Promise<ApiResponse<LoanEligibility>> {
+    return this.request("/api/loans/eligibility")
+  }
+
+  async requestLoan(amount: number): Promise<ApiResponse<Loan>> {
+    return this.request("/api/loans/request", {
+      method: "POST",
+      body: JSON.stringify({ amount }),
+    })
+  }
+
+  async repayLoan(loanId: number, amount: number): Promise<ApiResponse<Loan>> {
+    return this.request(`/api/loans/repay/${loanId}`, {
+      method: "POST",
+      body: JSON.stringify({ amount }),
+    })
+  }
+
+  async getUserLoans(): Promise<ApiResponse<Loan[]>> {
+    return this.request("/api/loans/status")
+  }
+
+  // Admin Loan APIs
+  async getAllLoans(params?: {
+    status?: string
+    userId?: number
+  }): Promise<ApiResponse<Loan[]>> {
+    const queryParams = new URLSearchParams()
+    if (params?.status) queryParams.append("status", params.status)
+    if (params?.userId) queryParams.append("userId", params.userId.toString())
+    return this.request(`/api/loans/admin/all?${queryParams.toString()}`)
+  }
+
+  async createBypassLoan(userId: number, amount: number): Promise<ApiResponse<Loan>> {
+    return this.request("/api/loans/admin/bypass", {
+      method: "POST",
+      body: JSON.stringify({ userId, amount }),
+    })
+  }
+
+  async updateLoanStatus(loanId: number, status: string): Promise<ApiResponse<Loan>> {
+    return this.request(`/api/loans/admin/${loanId}/status`, {
+      method: "PUT",
+      body: JSON.stringify({ status }),
+    })
+  }
 }
 
 export const apiClient = new ApiClient()
@@ -350,40 +426,57 @@ export class WebSocketClient {
   private phone: string | null = null
 
   connect(phone?: string) {
+    // Clean up existing connection first
+    if (this.ws) {
+      console.log("Cleaning up existing WebSocket connection")
+      this.ws.close(1000, "New connection requested")
+      this.ws = null
+    }
+
     this.phone = phone || null
     const wsUrl = `${API_BASE_URL.replace("http", "ws")}/ws`
 
     try {
+      console.log("Creating new WebSocket connection to:", wsUrl)
       this.ws = new WebSocket(wsUrl)
 
       this.ws.onopen = () => {
-        console.log("WebSocket connected")
+        console.log("WebSocket connected successfully")
         this.reconnectAttempts = 0
         // Emit connection status event
         window.dispatchEvent(new CustomEvent("websocket_connected", { detail: { connected: true } }))
         // Subscribe to support updates for this phone
         if (this.phone) {
-          this.send({ type: "subscribe", phone: this.phone })
+          this.send({ type: "join_support", phone: this.phone })
         }
       }
 
       this.ws.onmessage = (event) => {
-        const data = JSON.parse(event.data)
-        this.handleMessage(data)
+        try {
+          const data = JSON.parse(event.data)
+          this.handleMessage(data)
+        } catch (error) {
+          console.error("Failed to parse WebSocket message:", error)
+        }
       }
 
-      this.ws.onclose = () => {
-        console.log("WebSocket disconnected")
+      this.ws.onclose = (event) => {
+        console.log("WebSocket disconnected:", event.code, event.reason)
         // Emit disconnection status event
         window.dispatchEvent(new CustomEvent("websocket_connected", { detail: { connected: false } }))
-        this.reconnect()
+        // Only reconnect if it wasn't a clean close and we haven't exceeded max attempts
+        if (event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
+          this.reconnect()
+        }
       }
 
       this.ws.onerror = (error) => {
         console.error("WebSocket error:", error)
+        // Emit disconnection status event
+        window.dispatchEvent(new CustomEvent("websocket_connected", { detail: { connected: false } }))
       }
     } catch (error) {
-      console.error("Failed to connect WebSocket:", error)
+      console.error("Failed to create WebSocket connection:", error)
     }
   }
 
@@ -411,6 +504,24 @@ export class WebSocketClient {
       window.dispatchEvent(
         new CustomEvent("support_request_update", {
           detail: data.payload,
+        }),
+      )
+    } else if (data.type === "loan_created") {
+      window.dispatchEvent(
+        new CustomEvent("loan_created", {
+          detail: data,
+        }),
+      )
+    } else if (data.type === "loan_repaid") {
+      window.dispatchEvent(
+        new CustomEvent("loan_repaid", {
+          detail: data,
+        }),
+      )
+    } else if (data.type === "loan_overdue") {
+      window.dispatchEvent(
+        new CustomEvent("loan_overdue", {
+          detail: data,
         }),
       )
     }

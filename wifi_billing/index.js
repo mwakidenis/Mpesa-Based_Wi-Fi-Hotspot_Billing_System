@@ -2,6 +2,8 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
+const http = require("http");
+const socketIo = require("socket.io");
 const prisma = require("./config/prismaClient"); // Make sure this exists
 const {
   disconnectAllUsers,
@@ -9,6 +11,7 @@ const {
   getActiveDevices,
   getStatus,
 } = require("./config/mikrotik"); // Make sure this exists
+const logger = require("./src/logger");
 
 // M-Pesa routes
 const mpesaRoutes = require("./routes/mpesaRoutes");
@@ -209,7 +212,12 @@ app.get("/network/status", authMiddleware, async (req, res) => {
 });
 // -------------------- AUTH ROUTES --------------------
 const authRoutes = require("./routes/auth");
-app.use("/auth", authRoutes);
+app.use("/api/auth", authRoutes);
+
+// -------------------- LOAN ROUTES --------------------
+const loanRoutes = require("./routes/loanRoutes");
+app.use("/loans", loanRoutes);
+app.use("/api/loans", loanRoutes);
 
 // -------------------- ADMIN ROUTES --------------------
 // const adminRoutes = require("./routes/admin");
@@ -236,6 +244,12 @@ app.get("/api/device/info", (req, res) => {
   });
 });
 
+// -------------------- WELCOME ENDPOINT --------------------
+app.get("/welcome", (req, res) => {
+  logger.info(`Request received: ${req.method} ${req.path}`);
+  res.json({ message: "Welcome to the WiFi Billing System API!" });
+});
+
 // -------------------- ROOT ROUTE --------------------
 app.get("/", (req, res) => {
   res.json({ message: "WiFi Billing System API is running", status: "OK" });
@@ -243,8 +257,70 @@ app.get("/", (req, res) => {
 
 // -------------------- START SERVER --------------------
 
+// Create HTTP server for Socket.IO
+const server = http.createServer(app);
+const io = socketIo(server, {
+  cors: {
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST"]
+  }
+});
+
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+
+  // Handle loan-related events
+  socket.on('join_loan_room', (userId) => {
+    socket.join(`loan_${userId}`);
+    console.log(`User ${userId} joined loan room`);
+  });
+
+  socket.on('leave_loan_room', (userId) => {
+    socket.leave(`loan_${userId}`);
+    console.log(`User ${userId} left loan room`);
+  });
+
+  // Handle admin loan monitoring
+  socket.on('join_admin_loans', () => {
+    socket.join('admin_loans');
+    console.log('Admin joined loan monitoring room');
+  });
+
+  // Handle support requests
+  socket.on('join_support', (phone) => {
+    socket.join(`support_${phone}`);
+    console.log(`User with phone ${phone} joined support room`);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
+});
+
+// Make io available globally for routes
+global.io = io;
+
+// Function to emit loan events
+const emitLoanEvent = (event, data, userId = null) => {
+  if (userId) {
+    io.to(`loan_${userId}`).emit(event, data);
+  }
+  io.to('admin_loans').emit(event, data);
+};
+
+// Function to emit support events
+const emitSupportEvent = (event, data, phone = null) => {
+  if (phone) {
+    io.to(`support_${phone}`).emit(event, data);
+  }
+};
+
+global.emitLoanEvent = emitLoanEvent;
+global.emitSupportEvent = emitSupportEvent;
+
 // -------------------- START SERVER --------------------
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
   console.log(`WebSocket server ready for real-time updates`);
 });

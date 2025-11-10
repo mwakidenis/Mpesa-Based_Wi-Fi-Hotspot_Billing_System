@@ -42,7 +42,7 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalProps) {
     setError('')
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch('http://localhost:5000/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -69,7 +69,7 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalProps) {
       })
 
       // Reset form
-      setLoginData({ email: '', password: '' })
+      setLoginData({ username: '', password: '' })
 
     } catch (error: any) {
       setError(error.message)
@@ -91,13 +91,13 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalProps) {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/signup', {
+      const response = await fetch('http://localhost:5000/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: signupData.name,
+          username: signupData.name,
           email: signupData.email,
           phone: signupData.phone,
           password: signupData.password,

@@ -54,6 +54,14 @@ export function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
+            {isAuthenticated && (
+              <Link
+                href="/dashboard"
+                className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
+              >
+                Dashboard
+              </Link>
+            )}
             <Link
               href="/packages"
               className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
@@ -123,6 +131,15 @@ export function Header() {
         {isMenuOpen && (
           <div className="md:hidden border-t border-slate-200/20 dark:border-white/10 py-4">
             <nav className="flex flex-col space-y-4">
+              {isAuthenticated && (
+                <Link
+                  href="/dashboard"
+                  className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Dashboard
+                </Link>
+              )}
               <Link
                 href="/packages"
                 className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"

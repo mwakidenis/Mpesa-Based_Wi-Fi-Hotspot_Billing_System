@@ -55,6 +55,8 @@ model AuthUser {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   payments  Payment[]
+  activities UserActivity[]
+  loans     Loan[]
 }
 
 model SupportRequest {
@@ -66,4 +68,34 @@ model SupportRequest {
   status         String   @default("pending") // pending, in_progress, resolved, closed
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+model UserActivity {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  user        AuthUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action      String   // 'purchase', 'login', 'logout', etc.
+  amount      Int?     // For purchase actions
+  package     String?  // Package purchased
+  macAddress  String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model Loan {
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  user          AuthUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount        Int      // Loan amount in KES
+  status        String   @default("active") // active, repaid, overdue, defaulted
+  borrowedAt    DateTime @default(now())
+  dueAt         DateTime // When loan should be repaid
+  repaidAt      DateTime?
+  repaymentAmount Int?   // Actual amount repaid
+  interestRate  Float    @default(0.1) // 10% interest
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId, status])
 }

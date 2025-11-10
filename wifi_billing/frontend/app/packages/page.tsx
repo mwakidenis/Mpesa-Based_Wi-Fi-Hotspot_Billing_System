@@ -20,6 +20,7 @@ import PackageCard from "@/components/PackageCard"
 import StatusDisplay from "@/components/StatusDisplay"
 import DeviceInfoPanel from "@/components/DeviceInfoPanel"
 import InfoPanel from "@/components/InfoPanel"
+import LoanBorrowButton from "@/components/LoanBorrowButton"
 
 // --- Constants ---
 const packages: {
@@ -355,6 +356,21 @@ export default function PackagesPage() {
                         </>
                       )}
                     </Button>
+
+                    {/* Okoa Internet Loan Button */}
+                    <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-3 text-center">
+                        Don't have enough? Try Okoa Internet!
+                      </p>
+                      <LoanBorrowButton
+                        amount={amount}
+                        onLoanSuccess={(loanData) => {
+                          toast.success("Loan approved!", {
+                            description: `You borrowed Ksh ${loanData.amount}. Repay by ${new Date(loanData.dueAt).toLocaleDateString()}`
+                          })
+                        }}
+                      />
+                    </div>
 
                     <StatusDisplay status={status} />
                   </CardContent>

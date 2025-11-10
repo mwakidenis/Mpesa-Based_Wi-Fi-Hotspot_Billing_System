@@ -43,6 +43,7 @@ import AdminHeader from "@/components/admin/AdminHeader"
 import StatsCards from "@/components/admin/StatsCards"
 import UserManagement from "@/components/admin/UserManagement"
 import PaymentManagement from "@/components/admin/PaymentManagement"
+import LoanManagement from "@/components/admin/LoanManagement"
 import SystemSettings from "@/components/admin/SystemSettings"
 import SupportManagement from "@/components/admin/SupportManagement"
 
@@ -108,7 +109,7 @@ export default function AdminDashboard() {
             </div>
           </div>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:grid-cols-5 bg-white/50 dark:bg-slate-800/50 border border-slate-200 dark:border-white/10">
+            <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:grid-cols-6 bg-white/50 dark:bg-slate-800/50 border border-slate-200 dark:border-white/10">
               <TabsTrigger value="overview" className="flex items-center gap-2">
                 <Activity className="h-4 w-4" />
                 <span className="hidden sm:inline">Overview</span>
@@ -120,6 +121,10 @@ export default function AdminDashboard() {
               <TabsTrigger value="payments" className="flex items-center gap-2">
                 <CreditCard className="h-4 w-4" />
                 <span className="hidden sm:inline">Payments</span>
+              </TabsTrigger>
+              <TabsTrigger value="loans" className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4" />
+                <span className="hidden sm:inline">Loans</span>
               </TabsTrigger>
               <TabsTrigger value="issues" className="flex items-center gap-2">
                 <MessageSquare className="h-4 w-4" />
@@ -142,6 +147,9 @@ export default function AdminDashboard() {
             </TabsContent>
             <TabsContent value="payments">
               <PaymentManagement />
+            </TabsContent>
+            <TabsContent value="loans">
+              <LoanManagement />
             </TabsContent>
             <TabsContent value="issues">
               <SupportManagement />

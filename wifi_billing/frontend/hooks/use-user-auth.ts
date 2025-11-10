@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react'
 
 interface User {
   id: number
-  email: string
-  name: string
+  username: string
+  email: string | null
   phone: string
+  createdAt?: string
 }
 
 interface UserAuthState {
@@ -36,23 +37,29 @@ export function useUserAuth() {
 
   // Check for existing auth on mount
   useEffect(() => {
+    console.log("useUserAuth useEffect - checking localStorage")
     const token = localStorage.getItem('user_token')
     const userData = localStorage.getItem('user_data')
+
+    console.log("Token exists:", !!token, "User data exists:", !!userData)
 
     if (token && userData) {
       try {
         const user = JSON.parse(userData)
+        console.log("Parsed user data:", user)
         setAuthState({
           isAuthenticated: true,
           user,
           token,
           loading: false,
         })
+        console.log("Auth state set to authenticated")
       } catch (error) {
         console.error('Error parsing user data:', error)
         logout()
       }
     } else {
+      console.log("No token or user data found, setting loading to false")
       setAuthState((prev) => ({ ...prev, loading: false }))
     }
   }, [])
@@ -60,7 +67,7 @@ export function useUserAuth() {
   // Login function
   const login = async (username: string, password: string) => {
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch('http://localhost:5000/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
@@ -105,10 +112,10 @@ export function useUserAuth() {
   // Signup function
   const signup = async (name: string, email: string, phone: string, password: string) => {
     try {
-      const response = await fetch('http://localhost:5000/api/auth/signup', {
+      const response = await fetch('http://localhost:5000/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, phone, password }),
+        body: JSON.stringify({ username: name, email, phone, password }),
       })
 
       if (!response.ok) {

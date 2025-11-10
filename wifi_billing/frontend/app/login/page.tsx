@@ -15,8 +15,8 @@ import { useDynamicTitle } from "@/hooks/use-dynamic-title"
 export default function LoginPage() {
   useDynamicTitle("Login")
   const [loginData, setLoginData] = useState({
-    username: "Denis2",
-    password: "Denis2",
+    username: "",
+    password: "",
   })
   const [registerData, setRegisterData] = useState({
     username: "testuser",
@@ -47,16 +47,23 @@ export default function LoginPage() {
     setError(null)
 
     try {
+      console.log("Attempting login with:", loginData)
       const response = await apiClient.login(loginData)
+      console.log("Login response:", response)
+
       if (response.success && response.data) {
+        console.log("Login successful, storing data and redirecting")
         localStorage.setItem('user_token', response.data.token)
         localStorage.setItem('user_data', JSON.stringify(response.data.user))
         toast.success("Login successful!")
-        router.push("/")
+
+        // Force a page reload to ensure auth state is updated
+        window.location.href = "/dashboard"
       } else {
         throw new Error(response.error || "Invalid credentials")
       }
     } catch (error) {
+      console.error("Login error:", error)
       setError("Invalid credentials")
       toast.error("Invalid credentials")
     } finally {
@@ -102,16 +109,23 @@ export default function LoginPage() {
     }
 
     try {
+      console.log("Attempting registration with:", registerData)
       const response = await apiClient.register(registerData)
+      console.log("Registration response:", response)
+
       if (response.success && response.data) {
+        console.log("Registration successful, storing data and redirecting")
         localStorage.setItem('user_token', response.data.token)
         localStorage.setItem('user_data', JSON.stringify(response.data.user))
         toast.success("Account created successfully! Data transferred to database.")
-        router.push("/")
+
+        // Force a page reload to ensure auth state is updated
+        window.location.href = "/dashboard"
       } else {
         throw new Error(response.error || "Registration failed")
       }
     } catch (error) {
+      console.error("Registration error:", error)
       setError("Registration failed")
       toast.error("Registration failed")
     } finally {
