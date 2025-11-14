@@ -1,11 +1,12 @@
 const express = require("express");
 const prisma = require("../config/prismaClient");
+const logger = require("../src/logger");
 
 const router = express.Router();
 
 // Submit support request
 router.post("/submit", async (req, res) => {
-  console.log("Support request received:", req.body);
+  logger.info("Support request received", { body: req.body });
 
   const { name, phone, transactionCode, message } = req.body;
 
@@ -36,7 +37,15 @@ router.post("/submit", async (req, res) => {
       }
     });
 
-    console.log("Support request created:", supportRequest.id);
+    logger.info("Support request created", { requestId: supportRequest.id });
+
+    // Broadcast real-time update to the user
+    if (global.emitSupportEvent && supportRequest.phone) {
+      global.emitSupportEvent("support_request_created", {
+        type: "new_request",
+        request: supportRequest
+      }, supportRequest.phone);
+    }
 
     res.json({
       success: true,
@@ -47,7 +56,7 @@ router.post("/submit", async (req, res) => {
       }
     });
   } catch (error) {
-    console.error("Error creating support request:", error);
+    logger.error("Error creating support request", { error: error.message });
     res.status(500).json({
       success: false,
       error: "Failed to submit support request"
@@ -99,7 +108,7 @@ router.get("/requests", async (req, res) => {
       }
     });
   } catch (error) {
-    console.error("Error fetching support requests:", error);
+    logger.error("Error fetching support requests", { error: error.message });
     res.status(500).json({
       success: false,
       error: "Failed to fetch support requests"
@@ -126,11 +135,11 @@ router.put("/requests/:id/status", async (req, res) => {
     });
 
     // Broadcast real-time update to the user
-    if (global.broadcastSupportUpdate && updatedRequest.phone) {
-      global.broadcastSupportUpdate(updatedRequest.phone, {
+    if (global.emitSupportEvent && updatedRequest.phone) {
+      global.emitSupportEvent("support_status_update", {
         type: "status_update",
         request: updatedRequest
-      });
+      }, updatedRequest.phone);
     }
 
     res.json({
@@ -139,7 +148,7 @@ router.put("/requests/:id/status", async (req, res) => {
       data: updatedRequest
     });
   } catch (error) {
-    console.error("Error updating support request:", error);
+    logger.error("Error updating support request", { error: error.message });
     res.status(500).json({
       success: false,
       error: "Failed to update support request"
@@ -169,7 +178,7 @@ router.get("/user/requests", async (req, res) => {
       data: requests
     });
   } catch (error) {
-    console.error("Error fetching user support requests:", error);
+    logger.error("Error fetching user support requests", { error: error.message });
     res.status(500).json({
       success: false,
       error: "Failed to fetch support requests"
@@ -198,7 +207,7 @@ router.get("/requests/:id", async (req, res) => {
       data: request
     });
   } catch (error) {
-    console.error("Error fetching support request:", error);
+    logger.error("Error fetching support request", { error: error.message });
     res.status(500).json({
       success: false,
       error: "Failed to fetch support request"

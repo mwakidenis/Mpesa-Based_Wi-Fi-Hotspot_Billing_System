@@ -13,7 +13,9 @@ import {
   RefreshCw,
   TrendingUp,
   Calendar,
-  DollarSign
+  DollarSign,
+  Loader2,
+  Wifi
 } from "lucide-react"
 import { toast } from "sonner"
 import { apiClient, Loan } from "@/lib/api"
@@ -23,20 +25,32 @@ interface LoanStatusDashboardProps {
   className?: string
 }
 
+interface RepaymentStatus {
+  transactionId: string
+  mpesaRef: string | null
+  amount: number
+  status: string
+  loanId: number
+}
+
 export default function LoanStatusDashboard({ className }: LoanStatusDashboardProps) {
   const [loans, setLoans] = useState<Loan[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [repayingLoanId, setRepayingLoanId] = useState<number | null>(null)
+  const [repaymentStatuses, setRepaymentStatuses] = useState<Record<number, RepaymentStatus>>({})
+  const [macAddress, setMacAddress] = useState<string>('')
 
   useEffect(() => {
     loadLoans()
+    getDeviceInfo()
 
     // Connect to WebSocket for real-time updates
     const userData = localStorage.getItem('user_data')
     if (userData) {
       const user = JSON.parse(userData)
       // Always attempt connection - WebSocket client handles cleanup
-      wsClient.connect(user.phone)
+      wsClient.connect(user.id, user.phone)
     }
 
     // Listen for loan events
@@ -73,6 +87,17 @@ export default function LoanStatusDashboard({ className }: LoanStatusDashboardPr
       // Don't disconnect WebSocket here as other components might still need it
     }
   }, [])
+
+  const getDeviceInfo = async () => {
+    try {
+      const response = await apiClient.getDeviceInfo()
+      if (response.success && response.data) {
+        setMacAddress(response.data.macAddress)
+      }
+    } catch (error) {
+      console.error('Failed to get device info:', error)
+    }
+  }
 
   const loadLoans = async () => {
     try {
@@ -111,6 +136,36 @@ export default function LoanStatusDashboard({ className }: LoanStatusDashboardPr
       case 'overdue': return <AlertTriangle className="w-4 h-4" />
       case 'defaulted': return <AlertTriangle className="w-4 h-4" />
       default: return <Clock className="w-4 h-4" />
+    }
+  }
+
+  const handleRepayLoan = async (loanId: number) => {
+    setRepayingLoanId(loanId)
+    try {
+      const response = await apiClient.initiateLoanRepayment(loanId, macAddress)
+      if (response.success && response.data) {
+        setRepaymentStatuses(prev => ({
+          ...prev,
+          [loanId]: response.data
+        }))
+        toast.success("Repayment initiated!", {
+          description: "Please complete the M-Pesa payment to get WiFi access."
+        })
+      }
+    } catch (error) {
+      console.error("Error repaying loan:", error)
+      toast.error("Failed to initiate repayment")
+    } finally {
+      setRepayingLoanId(null)
+    }
+  }
+
+  const getRepaymentStatusIcon = (status: string) => {
+    switch (status) {
+      case 'pending': return <Clock className="w-4 h-4 text-yellow-500" />
+      case 'completed': return <CheckCircle className="w-4 h-4 text-green-500" />
+      case 'failed': return <AlertTriangle className="w-4 h-4 text-red-500" />
+      default: return <Clock className="w-4 h-4 text-gray-500" />
     }
   }
 
@@ -249,6 +304,49 @@ export default function LoanStatusDashboard({ className }: LoanStatusDashboardPr
                       </div>
                     )}
                   </div>
+
+                  {repaymentStatuses[loan.id] && (
+                    <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+                      {getRepaymentStatusIcon(repaymentStatuses[loan.id].status)}
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">
+                          Repayment {repaymentStatuses[loan.id].status}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Transaction: {repaymentStatuses[loan.id].transactionId}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {loan.status === 'active' && (
+                    <Button
+                      onClick={() => handleRepayLoan(loan.id)}
+                      disabled={repayingLoanId === loan.id}
+                      className="w-full"
+                    >
+                      {repayingLoanId === loan.id ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <Wifi className="mr-2 h-4 w-4" />
+                          Repay & Get WiFi Access (KES {Math.ceil(loan.amount * (1 + loan.interestRate))})
+                        </>
+                      )}
+                    </Button>
+                  )}
+
+                  {loan.status === 'repaid' && (
+                    <Alert>
+                      <CheckCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        Loan repaid successfully. WiFi access has been granted.
+                      </AlertDescription>
+                    </Alert>
+                  )}
 
                   {loan.status === 'active' && isOverdue(loan.dueAt) && (
                     <Alert className="border-red-200 bg-red-50">

@@ -178,6 +178,12 @@ export default function SupportPage() {
       setIsAuthenticated(true)
       const parsedUser = JSON.parse(userData)
       setUser(parsedUser)
+      // Pre-fill form with user data
+      setContactForm(prev => ({
+        ...prev,
+        name: parsedUser.username || prev.name,
+        phone: parsedUser.phone || prev.phone,
+      }))
       loadUserRequests(parsedUser.phone)
       // Connect to WebSocket for real-time updates
       wsClient.connect(parsedUser.phone)
@@ -454,6 +460,7 @@ export default function SupportPage() {
                         onChange={(e) => handleInputChange("name", e.target.value)}
                         className="bg-white/50 dark:bg-slate-700/50 border-slate-300 dark:border-white/10"
                         required
+                        readOnly={isAuthenticated}
                       />
                     </div>
                     <div>
@@ -467,6 +474,7 @@ export default function SupportPage() {
                         onChange={(e) => handleInputChange("phone", e.target.value)}
                         className="bg-white/50 dark:bg-slate-700/50 border-slate-300 dark:border-white/10"
                         required
+                        readOnly={isAuthenticated}
                       />
                     </div>
                   </div>

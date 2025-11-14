@@ -1,0 +1,61 @@
+services:
+  # WiFi Billing API Service
+  - type: web
+    name: wifi-billing-api
+    runtime: node
+    buildCommand: npm install && npx prisma generate
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        fromSecret: database_url
+      - key: JWT_SECRET
+        fromSecret: jwt_secret
+      - key: ADMIN_USERNAME
+        fromSecret: admin_username
+      - key: ADMIN_PASSWORD
+        fromSecret: admin_password
+      - key: ADMIN_EMAIL
+        fromSecret: admin_email
+      - key: MPESA_ENABLED
+        value: true
+      - key: MPESA_CONSUMER_KEY
+        fromSecret: mpesa_consumer_key
+      - key: MPESA_CONSUMER_SECRET
+        fromSecret: mpesa_consumer_secret
+      - key: MPESA_SHORTCODE
+        fromSecret: mpesa_shortcode
+      - key: MPESA_PASSKEY
+        fromSecret: mpesa_passkey
+      - key: MPESA_CALLBACK_URL
+        fromSecret: mpesa_callback_url
+      - key: MIKROTIK_ENABLED
+        fromSecret: mikrotik_enabled
+      - key: MIKROTIK_HOST
+        fromSecret: mikrotik_host
+      - key: MIKROTIK_USER
+        fromSecret: mikrotik_user
+      - key: MIKROTIK_PASSWORD
+        fromSecret: mikrotik_password
+      - key: MIKROTIK_PORT
+        fromSecret: mikrotik_port
+      - key: LOAN_WIFI_DURATION_HOURS
+        value: 1
+
+  # PostgreSQL Database
+  - type: pserv
+    name: wifi-billing-db
+    runtime: postgres
+    ipAllowList: []  # Only accessible by other services in this project
+
+# Environment groups for different deployment environments
+environments:
+  - name: production
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LOAN_WIFI_DURATION_HOURS
+        value: 1

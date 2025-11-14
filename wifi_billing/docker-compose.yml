@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - DATABASE_URL=postgresql://wifi_user:wifi_password@db:5432/wifi_billing
+      - JWT_SECRET=${JWT_SECRET}
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+      - MPESA_ENABLED=true
+      - MPESA_CONSUMER_KEY=${MPESA_CONSUMER_KEY}
+      - MPESA_CONSUMER_SECRET=${MPESA_CONSUMER_SECRET}
+      - MPESA_SHORTCODE=${MPESA_SHORTCODE}
+      - MPESA_PASSKEY=${MPESA_PASSKEY}
+      - MPESA_CALLBACK_URL=${MPESA_CALLBACK_URL}
+      - MIKROTIK_ENABLED=${MIKROTIK_ENABLED}
+      - MIKROTIK_HOST=${MIKROTIK_HOST}
+      - MIKROTIK_USER=${MIKROTIK_USER}
+      - MIKROTIK_PASSWORD=${MIKROTIK_PASSWORD}
+      - MIKROTIK_PORT=${MIKROTIK_PORT}
+      - LOAN_WIFI_DURATION_HOURS=${LOAN_WIFI_DURATION_HOURS}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - wifi-network
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=wifi_billing
+      - POSTGRES_USER=wifi_user
+      - POSTGRES_PASSWORD=wifi_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wifi_user -d wifi_billing"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - wifi-network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@wifi.com
+      - PGADMIN_DEFAULT_PASSWORD=admin123
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+    restart: unless-stopped
+    networks:
+      - wifi-network
+    profiles:
+      - tools
+
+volumes:
+  postgres_data:
+
+networks:
+  wifi-network:
+    driver: bridge

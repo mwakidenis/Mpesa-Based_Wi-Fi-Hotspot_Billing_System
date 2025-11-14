@@ -4,7 +4,19 @@
   "main": "index.js",
   "scripts": {
     "dev": "node index.js",
-    "start": "node index.js"
+    "start": "node index.js",
+    "build": "echo 'No build step required for Node.js'",
+    "postinstall": "npx prisma generate",
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:stop": "pm2 stop ecosystem.config.js",
+    "pm2:restart": "pm2 restart ecosystem.config.js",
+    "pm2:delete": "pm2 delete ecosystem.config.js",
+    "pm2:logs": "pm2 logs wifi-billing-api",
+    "pm2:monit": "pm2 monit",
+    "docker:build": "docker build -t wifi-billing .",
+    "docker:run": "docker run -p 5000:5000 --env-file .env wifi-billing",
+    "deploy": "./deploy.sh",
+    "render:deploy": "npm run build && npm start"
   },
   "keywords": [],
   "author": "niGiddy",
@@ -13,12 +25,13 @@
   "dependencies": {
     "@prisma/client": "^6.15.0",
     "axios": "^1.8.1",
+    "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
     "body-parser": "^1.20.3",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "express": "^4.21.2",
-    "express-rate-limit": "^7.1.5",
+    "express-rate-limit": "^7.5.1",
     "express-validator": "^7.0.1",
     "helmet": "^7.2.0",
     "jsonwebtoken": "^9.0.2",
@@ -27,8 +40,10 @@
     "node": "^23.9.0",
     "node-fetch": "^3.3.2",
     "node-routeros": "^1.6.8",
+    "pm2": "^5.3.0",
     "prisma": "^6.15.0",
     "socket.io": "^4.8.1",
-    "socket.io-client": "^4.8.1"
+    "socket.io-client": "^4.8.1",
+    "winston": "^3.18.3"
   }
 }

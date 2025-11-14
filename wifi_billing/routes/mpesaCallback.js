@@ -1,11 +1,12 @@
 const express = require("express");
 const prisma = require("../config/prismaClient");
 const { whitelistMAC } = require("../config/mikrotik");
+const logger = require("../src/logger");
 
 const router = express.Router();
 
 router.post("/mpesa/callback", async (req, res) => {
-  console.log("📲 M-Pesa Callback Received:", JSON.stringify(req.body, null, 2));
+  logger.info("M-Pesa Callback Received", { body: req.body });
 
   const callbackData = req.body?.Body?.stkCallback;
   const checkoutId = callbackData?.CheckoutRequestID;
@@ -32,10 +33,10 @@ router.post("/mpesa/callback", async (req, res) => {
           data: { status: "failed" }
         });
       }
-      console.log(`❌ Payment failed for checkout ID: ${checkoutId} - Result Code: ${resultCode}`);
+      logger.warn(`Payment failed for checkout ID: ${checkoutId}`, { resultCode });
       return res.json({ success: false, message: "Payment failed or canceled" });
     } catch (error) {
-      console.error("❌ Failed to update payment status:", error);
+      logger.error("Failed to update payment status", { error: error.message, checkoutId });
       return res.status(500).json({ success: false, error: "Failed to update payment status" });
     }
   }
@@ -45,7 +46,7 @@ router.post("/mpesa/callback", async (req, res) => {
 
   // Validate that we have the required M-Pesa transaction details
   if (!amount || !mpesaRef) {
-    console.error("❌ Invalid callback data - missing amount or M-Pesa receipt number");
+    logger.error("Invalid callback data - missing amount or M-Pesa receipt number", { checkoutId, amount, mpesaRef });
     try {
       if (isLoanRepayment) {
         await prisma.loanRepayment.updateMany({
@@ -59,7 +60,7 @@ router.post("/mpesa/callback", async (req, res) => {
         });
       }
     } catch (error) {
-      console.error("❌ Failed to update payment status:", error);
+      logger.error("Failed to update payment status", { error: error.message, checkoutId });
     }
     return res.status(400).json({ success: false, error: "Invalid callback data - missing transaction details" });
   }
@@ -73,7 +74,7 @@ router.post("/mpesa/callback", async (req, res) => {
       });
 
       if (!repayment) {
-        console.error("❌ Loan repayment transaction not found for checkout ID:", checkoutId);
+        logger.error("Loan repayment transaction not found", { checkoutId });
         return res.status(500).json({ success: false, error: "Loan repayment transaction not found" });
       }
 
@@ -105,7 +106,57 @@ router.post("/mpesa/callback", async (req, res) => {
         }
       });
 
-      console.log(`✅ Loan repayment completed for checkout ID: ${checkoutId} - Amount: ${amount}, Loan ID: ${repayment.loanId}`);
+      // After successful loan repayment, grant WiFi access
+      // Get user's MAC address from loan repayment initiation activity
+      const recentActivity = await prisma.userActivity.findFirst({
+        where: {
+          userId: repayment.loan.userId,
+          action: 'loan_repay_initiated',
+          macAddress: { not: null }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      if (recentActivity && recentActivity.macAddress) {
+        const mac = recentActivity.macAddress;
+        // Use configurable WiFi duration for loan repayments
+        const loanWifiDurationHours = parseInt(process.env.LOAN_WIFI_DURATION_HOURS) || 1;
+        const timeLabel = loanWifiDurationHours === 1 ? "1Hr" :
+                         loanWifiDurationHours === 4 ? "4Hrs" :
+                         loanWifiDurationHours === 12 ? "12Hrs" :
+                         loanWifiDurationHours === 24 ? "24Hrs" : "1Hr";
+
+        logger.info(`Granting WiFi access after loan repayment`, { mac, timeLabel, durationHours: loanWifiDurationHours });
+
+        const mikrotikResponse = await whitelistMAC(mac, timeLabel);
+
+        if (mikrotikResponse.success) {
+          // Calculate expiry time based on configured duration
+          const expiresAt = new Date(Date.now() + loanWifiDurationHours * 60 * 60 * 1000);
+
+          // Create a payment record for the WiFi access granted via loan repayment
+          await prisma.payment.create({
+            data: {
+              phone: repayment.loan.user.phone,
+              amount: repayment.amount,
+              transactionId: `LOAN_WIFI_${repayment.id}_${Date.now()}`,
+              macAddress: mac,
+              status: "completed",
+              mpesaRef: mpesaRef,
+              expiresAt: expiresAt,
+              authUserId: repayment.loan.userId
+            }
+          });
+
+          logger.info(`WiFi access granted after loan repayment`, { mac, expiresAt, durationHours: loanWifiDurationHours });
+        } else {
+          logger.error("Failed to grant WiFi access after loan repayment", { mac, error: mikrotikResponse.message });
+        }
+      } else {
+        logger.warn("No MAC address found for user, skipping WiFi access grant after loan repayment", { userId: repayment.loan.userId });
+      }
+
+      logger.info(`Loan repayment completed`, { checkoutId, amount, loanId: repayment.loanId });
       return res.json({ success: true, message: "Loan repayment completed successfully" });
 
     } else {
@@ -115,7 +166,7 @@ router.post("/mpesa/callback", async (req, res) => {
         select: { macAddress: true }
       });
       if (!payment || !payment.macAddress) {
-        console.error("❌ Transaction not found for checkout ID:", checkoutId);
+        logger.error("Transaction not found", { checkoutId });
         return res.status(500).json({ success: false, error: "Transaction not found" });
       }
       const mac = payment.macAddress;
@@ -124,7 +175,7 @@ router.post("/mpesa/callback", async (req, res) => {
       else if (Number(amount) === 20) time = "12Hrs";
       else if (Number(amount) === 15) time = "4Hrs";
 
-      console.log(`✅ Whitelisting MAC ${mac} for ${time}...`);
+      logger.info(`Whitelisting MAC for payment`, { mac, time, amount });
 
       const mikrotikResponse = await whitelistMAC(mac, time);
 
@@ -147,15 +198,15 @@ router.post("/mpesa/callback", async (req, res) => {
           }
         });
 
-        console.log(`✅ Payment completed for checkout ID: ${checkoutId} - Amount: ${amount}, Expires: ${expiresAt}`);
+        logger.info(`Payment completed`, { checkoutId, amount, expiresAt });
         return res.json({ success: true, message: mikrotikResponse.message });
       } else {
-        console.error("❌ MikroTik Error:", mikrotikResponse.message);
+        logger.error("MikroTik whitelist failed", { mac, error: mikrotikResponse.message });
         return res.status(500).json({ success: false, error: "MikroTik whitelist failed" });
       }
     }
   } catch (error) {
-    console.error("❌ Database Error:", error);
+    logger.error("Database error in M-Pesa callback", { error: error.message, checkoutId });
     return res.status(500).json({ success: false, error: "Internal server error" });
   }
 });

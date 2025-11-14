@@ -1,7 +1,9 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
+const rateLimit = require("express-rate-limit");
 const prisma = require("../config/prismaClient");
 const { stkPush } = require("../config/mpesa");
+const logger = require("../src/logger");
 const {
   checkEligibility,
   createLoan,
@@ -74,39 +76,96 @@ const verifyAdmin = (req, res, next) => {
   }
 };
 
+// Rate limiter for loan eligibility checks
+const eligibilityLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // limit each IP to 10 requests per windowMs
+  message: "Too many eligibility checks, please try again later.",
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Check loan eligibility
-router.get("/eligibility", verifyToken, async (req, res) => {
+router.get("/eligibility", verifyToken, eligibilityLimiter, async (req, res) => {
   try {
     const userId = req.user.userId;
     const eligibility = await checkEligibility(userId);
+
+    logger.info(`Loan eligibility checked for user ${userId}: ${eligibility.eligible ? 'eligible' : 'not eligible'}`);
+
+    // Emit real-time eligibility status update
+    if (global.emitLoanEvent) {
+      global.emitLoanEvent('loan_eligibility_checked', {
+        userId,
+        eligible: eligibility.eligible,
+        reason: eligibility.reason,
+        loanAmount: eligibility.loanAmount,
+        recentPurchases: eligibility.recentPurchases,
+        checkedAt: new Date()
+      }, userId);
+    }
 
     res.json({
       success: true,
       data: eligibility
     });
   } catch (error) {
-    console.error("Error checking eligibility:", error);
+    logger.error("Error checking eligibility:", error);
     res.status(500).json({
       success: false,
-      error: "Failed to check eligibility"
+      error: "An error occurred while checking eligibility"
     });
   }
 });
 
+// Rate limiter for loan requests
+const loanRequestLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3, // limit each IP to 3 loan requests per hour
+  message: "Too many loan requests, please try again later.",
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Request a loan
-router.post("/request", verifyToken, async (req, res) => {
+router.post("/request", verifyToken, loanRequestLimiter, async (req, res) => {
   try {
     const userId = req.user.userId;
     const { amount } = req.body;
 
-    if (!amount || amount <= 0) {
+    // Enhanced validation
+    if (!amount || amount <= 0 || amount > 1000) {
       return res.status(400).json({
         success: false,
-        error: "Valid loan amount is required"
+        error: "Loan amount must be between 1 and 1000 KES"
       });
     }
 
-    const loan = await createLoan(userId, parseInt(amount));
+    // Validate amount is a number
+    const parsedAmount = parseInt(amount);
+    if (isNaN(parsedAmount)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid loan amount format"
+      });
+    }
+
+    const loan = await createLoan(userId, parsedAmount);
+
+    logger.info(`Loan requested by user ${userId} for amount ${parsedAmount}`);
+
+    // Emit real-time loan application result
+    if (global.emitLoanEvent) {
+      global.emitLoanEvent('loan_application_result', {
+        userId,
+        status: 'approved',
+        loanId: loan.id,
+        amount: loan.amount,
+        dueAt: loan.dueAt,
+        message: 'Your loan application has been approved!',
+        appliedAt: new Date()
+      }, userId);
+    }
 
     res.json({
       success: true,
@@ -114,19 +173,42 @@ router.post("/request", verifyToken, async (req, res) => {
       data: loan
     });
   } catch (error) {
-    console.error("Error requesting loan:", error);
+    logger.error("Error requesting loan:", error);
+
+    // Emit real-time loan application rejection
+    if (global.emitLoanEvent) {
+      global.emitLoanEvent('loan_application_result', {
+        userId,
+        status: 'rejected',
+        amount: parsedAmount,
+        reason: error.message || 'Unable to process loan request at this time',
+        message: 'Your loan application has been rejected.',
+        appliedAt: new Date()
+      }, userId);
+    }
+
     res.status(400).json({
       success: false,
-      error: error.message
+      error: "Unable to process loan request at this time"
     });
   }
 });
 
+// Rate limiter for repayment initiation
+const repaymentLimiter = rateLimit({
+  windowMs: 30 * 60 * 1000, // 30 minutes
+  max: 5, // limit each IP to 5 repayment initiations per windowMs
+  message: "Too many repayment attempts, please try again later.",
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Initiate loan repayment (M-Pesa STK Push)
-router.post("/repay/initiate/:loanId", verifyToken, async (req, res) => {
-  console.log("Loan repayment initiate request received:", req.body);
+router.post("/repay/initiate/:loanId", verifyToken, repaymentLimiter, async (req, res) => {
+  logger.info(`Loan repayment initiate request received for loan ${req.params.loanId} by user ${req.user.userId}`);
 
   const { loanId } = req.params;
+  const { macAddress } = req.body; // Optional MAC address for WiFi access
   const userId = req.user.userId;
 
   try {
@@ -137,6 +219,7 @@ router.post("/repay/initiate/:loanId", verifyToken, async (req, res) => {
     });
 
     if (!loan || loan.userId !== userId) {
+      logger.warn(`Loan ${loanId} not found or does not belong to user ${userId}`);
       return res.status(404).json({
         success: false,
         error: "Loan not found"
@@ -144,6 +227,7 @@ router.post("/repay/initiate/:loanId", verifyToken, async (req, res) => {
     }
 
     if (loan.status !== 'active') {
+      logger.warn(`Loan ${loanId} is not active (status: ${loan.status})`);
       return res.status(400).json({
         success: false,
         error: "Loan is not active"
@@ -156,18 +240,20 @@ router.post("/repay/initiate/:loanId", verifyToken, async (req, res) => {
     // Get user's phone number
     const phone = loan.user.phone;
     if (!phone) {
+      logger.error(`User ${userId} has no phone number`);
       return res.status(400).json({
         success: false,
         error: "User phone number not found"
       });
     }
 
-    // Accept +2547XXXXXXXX or 2547XXXXXXXX
+    // Enhanced phone number validation
     const normalizedPhone = phone.startsWith("+") ? phone.slice(1) : phone;
     if (!/^2547\d{8}$/.test(normalizedPhone)) {
+      logger.warn(`Invalid phone number format for user ${userId}: ${phone}`);
       return res.status(400).json({
         success: false,
-        error: "Invalid phone number format"
+        error: "Invalid phone number format. Must be Kenyan mobile number."
       });
     }
 
@@ -183,13 +269,42 @@ router.post("/repay/initiate/:loanId", verifyToken, async (req, res) => {
           status: "pending"
         }
       });
+      logger.info(`Created loan repayment record for loan ${loanId}, transaction ${transactionId}`);
     } catch (dbError) {
-      console.error("Database error creating loan repayment:", dbError);
-      return res.status(500).json({ success: false, error: "Database error" });
+      logger.error("Database error creating loan repayment:", dbError);
+      return res.status(500).json({ success: false, error: "Unable to process repayment request" });
+    }
+
+    // Store MAC address in user activity for WiFi access after repayment
+    if (macAddress) {
+      // Validate MAC address format (enhanced validation)
+      const macRegex = /^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/;
+      if (!macRegex.test(macAddress)) {
+        logger.warn(`Invalid MAC address format: ${macAddress}`);
+        return res.status(400).json({
+          success: false,
+          error: "Invalid MAC address format. Must be in format XX:XX:XX:XX:XX:XX or XX-XX-XX-XX-XX-XX"
+        });
+      }
+
+      try {
+        await prisma.userActivity.create({
+          data: {
+            userId: userId,
+            action: 'loan_repay_initiated',
+            macAddress: macAddress,
+            amount: totalDue
+          }
+        });
+        logger.info(`Stored MAC address for loan repayment: ${macAddress} for user ${userId}`);
+      } catch (activityError) {
+        logger.error("Failed to store MAC address in activity:", activityError);
+        // Don't fail the repayment initiation for this
+      }
     }
 
     // Use real MPesa STK Push
-    console.log(`Initiating STK Push for loan repayment: Phone: ${normalizedPhone}, Amount: ${totalDue}`);
+    logger.info(`Initiating STK Push for loan repayment: Phone: ${normalizedPhone}, Amount: ${totalDue}, Transaction: ${transactionId}`);
     try {
       const stkResponse = await stkPush(normalizedPhone, totalDue, transactionId);
       if (!stkResponse) {
@@ -199,10 +314,11 @@ router.post("/repay/initiate/:loanId", verifyToken, async (req, res) => {
             where: { transactionId },
             data: { status: "failed" }
           });
+          logger.error(`STK Push failed for transaction ${transactionId}: No response from MPesa API`);
         } catch (dbError) {
-          console.error("Failed to update repayment status:", dbError);
+          logger.error("Failed to update repayment status:", dbError);
         }
-        return res.status(500).json({ success: false, error: "STK Push failed. No response from MPesa API." });
+        return res.status(500).json({ success: false, error: "Payment service temporarily unavailable" });
       }
 
       // Persist CheckoutRequestID for callback correlation
@@ -213,12 +329,13 @@ router.post("/repay/initiate/:loanId", verifyToken, async (req, res) => {
             where: { transactionId },
             data: { mpesaRef: checkoutId }
           });
+          logger.info(`Persisted M-Pesa reference ${checkoutId} for transaction ${transactionId}`);
         }
       } catch (e) {
-        console.error("Failed to persist mpesa_ref:", e);
+        logger.error("Failed to persist mpesa_ref:", e);
       }
 
-      console.log("Returning success response for loan repayment transaction:", transactionId);
+      logger.info(`Successfully initiated repayment for transaction ${transactionId}`);
       return res.json({
         success: true,
         data: {
@@ -226,11 +343,14 @@ router.post("/repay/initiate/:loanId", verifyToken, async (req, res) => {
           mpesaRef: stkResponse.CheckoutRequestID || stkResponse.MerchantRequestID || null,
           amount: totalDue,
           status: "pending",
+          willGrantWifiAccess: !!macAddress // Indicate if WiFi access will be granted
         },
-        message: "STK Push sent for loan repayment!",
+        message: macAddress
+          ? "STK Push sent for loan repayment! WiFi access will be granted upon successful payment."
+          : "STK Push sent for loan repayment!",
       });
     } catch (stkError) {
-      console.error('STK Push Error:', stkError);
+      logger.error('STK Push Error:', stkError);
 
       // Mark repayment as failed in database
       try {
@@ -239,16 +359,16 @@ router.post("/repay/initiate/:loanId", verifyToken, async (req, res) => {
           data: { status: "failed" }
         });
       } catch (dbError) {
-        console.error("Failed to update repayment status:", dbError);
+        logger.error("Failed to update repayment status:", dbError);
       }
 
-      return res.status(500).json({ success: false, error: "STK Push failed. No response from MPesa API." });
+      return res.status(500).json({ success: false, error: "Payment service temporarily unavailable" });
     }
   } catch (error) {
-    console.error("Error initiating loan repayment:", error);
+    logger.error("Error initiating loan repayment:", error);
     res.status(500).json({
       success: false,
-      error: "Failed to initiate loan repayment"
+      error: "Unable to process repayment request"
     });
   }
 });
@@ -271,7 +391,7 @@ router.get("/repay/status/:transactionId", verifyToken, async (req, res) => {
       loanId: repayment.loanId
     }});
   } catch (error) {
-    console.error("/repay/status error:", error);
+    logger.error("Error fetching repayment status:", error);
     return res.status(500).json({ success: false, error: "Failed to fetch repayment status" });
   }
 });
@@ -287,7 +407,7 @@ router.get("/status", verifyToken, async (req, res) => {
       data: loans
     });
   } catch (error) {
-    console.error("Error getting loan status:", error);
+    logger.error("Error getting loan status:", error);
     res.status(500).json({
       success: false,
       error: "Failed to get loan status"
@@ -310,7 +430,7 @@ router.get("/admin/all", verifyAdmin, async (req, res) => {
       data: loans
     });
   } catch (error) {
-    console.error("Error getting all loans:", error);
+    logger.error("Error getting all loans:", error);
     res.status(500).json({
       success: false,
       error: "Failed to get loans"
@@ -318,163 +438,10 @@ router.get("/admin/all", verifyAdmin, async (req, res) => {
   }
 });
 
-// Admin: Create bypass loan for testing
-router.post("/admin/bypass", verifyAdmin, async (req, res) => {
-  try {
-    const { userId, amount } = req.body;
+// Admin: Create bypass loan for testing - REMOVED FOR PRODUCTION
+// This endpoint has been removed for production security
 
-    if (!userId || !amount || amount <= 0) {
-      return res.status(400).json({
-        success: false,
-        error: "Valid userId and amount are required"
-      });
-    }
 
-    const loan = await createBypassLoan(parseInt(userId), parseInt(amount));
-
-    res.json({
-      success: true,
-      message: "Bypass loan created successfully",
-      data: loan
-    });
-  } catch (error) {
-    console.error("Error creating bypass loan:", error);
-    res.status(400).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// Special bypass for Duncan Ndulu testing
-router.post("/bypass/duncan", async (req, res) => {
-  try {
-    console.log("Duncan Ndulu bypass request received");
-
-    // Find Duncan Ndulu's user record
-    const duncanUser = await prisma.authUser.findFirst({
-      where: { username: "Duncan Ndulu" }
-    });
-
-    if (!duncanUser) {
-      return res.status(404).json({
-        success: false,
-        error: "Duncan Ndulu user not found"
-      });
-    }
-
-    // Update user to be eligible for borrowing
-    await prisma.authUser.update({
-      where: { id: duncanUser.id },
-      data: {
-        owedAmount: 0,
-        canBorrow: true,
-        borrowCount: 0
-      }
-    });
-
-    console.log("Duncan Ndulu bypass applied successfully");
-
-    res.json({
-      success: true,
-      message: "Duncan Ndulu bypass applied - now eligible for borrowing",
-      data: {
-        userId: duncanUser.id,
-        username: duncanUser.username,
-        canBorrow: true,
-        owedAmount: 0,
-        borrowCount: 0
-      }
-    });
-  } catch (error) {
-    console.error("Error applying Duncan bypass:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to apply bypass"
-    });
-  }
-});
-
-// Create a test user for loan testing
-router.post("/create-test-user", async (req, res) => {
-  try {
-    console.log("Creating test user for loan testing");
-
-    // Check if test user already exists
-    const existingUser = await prisma.authUser.findFirst({
-      where: { username: "Test Borrower" }
-    });
-
-    if (existingUser) {
-      // Update existing test user to be eligible
-      await prisma.authUser.update({
-        where: { id: existingUser.id },
-        data: {
-          owedAmount: 0,
-          canBorrow: true,
-          borrowCount: 0
-        }
-      });
-
-      return res.json({
-        success: true,
-        message: "Test user updated - now eligible for borrowing",
-        data: {
-          userId: existingUser.id,
-          username: existingUser.username,
-          phone: existingUser.phone,
-          canBorrow: true,
-          owedAmount: 0,
-          borrowCount: 0
-        }
-      });
-    }
-
-    // Create new test user
-    const hashedPassword = await require('bcryptjs').hash('Test123', 10);
-
-    const testUser = await prisma.authUser.create({
-      data: {
-        username: "Test Borrower",
-        email: "test@borrower.com",
-        phone: "0712345678",
-        password: hashedPassword
-      }
-    });
-
-    // Update the user to be eligible for borrowing (separate update to ensure fields exist)
-    await prisma.authUser.update({
-      where: { id: testUser.id },
-      data: {
-        owedAmount: 0,
-        canBorrow: true,
-        borrowCount: 0
-      }
-    });
-
-    console.log("Test user created successfully:", testUser.id);
-
-    res.json({
-      success: true,
-      message: "Test user created - eligible for borrowing",
-      data: {
-        userId: testUser.id,
-        username: testUser.username,
-        phone: testUser.phone,
-        password: "Test123", // Plain text for testing
-        canBorrow: true,
-        owedAmount: 0,
-        borrowCount: 0
-      }
-    });
-  } catch (error) {
-    console.error("Error creating test user:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to create test user"
-    });
-  }
-});
 
 // Admin: Update loan status
 router.put("/admin/:loanId/status", verifyAdmin, async (req, res) => {
@@ -509,7 +476,7 @@ router.put("/admin/:loanId/status", verifyAdmin, async (req, res) => {
       data: updatedLoan
     });
   } catch (error) {
-    console.error("Error updating loan status:", error);
+    logger.error("Error updating loan status:", error);
     res.status(500).json({
       success: false,
       error: "Failed to update loan status"

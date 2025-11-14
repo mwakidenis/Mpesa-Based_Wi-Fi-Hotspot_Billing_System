@@ -3,6 +3,7 @@ const router = express.Router();
 const prisma = require("../config/prismaClient");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt"); // optional if later you want hashed passwords
+const logger = require("../src/logger");
 const {
   disconnectAllUsers,
   disconnectByMac,
@@ -16,6 +17,8 @@ const {
 router.post("/login", async (req, res) => {
   try {
     const { username, password } = req.body;
+
+    logger.info("Admin login attempt", { username });
 
     // Check primary admin credentials
     const isPrimaryAdmin = (
@@ -35,6 +38,7 @@ router.post("/login", async (req, res) => {
         process.env.JWT_SECRET,
         { expiresIn: "1d" }
       );
+      logger.info("Admin login successful", { username });
       return res.json({
         success: true,
         token,
@@ -48,6 +52,7 @@ router.post("/login", async (req, res) => {
         process.env.JWT_SECRET,
         { expiresIn: "1d" }
       );
+      logger.info("Admin login successful", { username });
       return res.json({
         success: true,
         token,
@@ -55,8 +60,10 @@ router.post("/login", async (req, res) => {
       });
     }
 
+    logger.warn("Admin login failed - invalid credentials", { username });
     return res.status(401).json({ success: false, message: "Invalid credentials" });
   } catch (error) {
+    logger.error("Admin login error", { error: error.message });
     return res.status(500).json({ success: false, error: "Login failed" });
   }
 });
@@ -87,6 +94,7 @@ function authMiddleware(req, res, next) {
 // ✅ Get All Payments
 router.get("/payments", authMiddleware, async (req, res) => {
   try {
+    logger.info("Fetching payments", { admin: req.user.username });
     const payments = await prisma.payment.findMany({
       orderBy: { timePurchased: "desc" },
       select: {
@@ -96,9 +104,10 @@ router.get("/payments", authMiddleware, async (req, res) => {
         status: true
       }
     });
+    logger.info("Payments fetched successfully", { count: payments.length });
     res.json({ success: true, data: payments });
   } catch (error) {
-    console.error("Payments error:", error);
+    logger.error("Payments error", { error: error.message });
     res.status(500).json({ success: false, error: "Database error" });
   }
 });
@@ -106,10 +115,14 @@ router.get("/payments", authMiddleware, async (req, res) => {
 // ✅ Get Summary
 router.get("/summary", authMiddleware, async (req, res) => {
   try {
-    const totalUsers = await prisma.payment.count({
+    logger.info("Fetching admin summary", { admin: req.user.username });
+    // Count unique phones from completed payments
+    const completedPayments = await prisma.payment.findMany({
       where: { status: "completed" },
-      distinct: ["phone"]
+      select: { phone: true }
     });
+    const uniquePhones = new Set(completedPayments.map(p => p.phone));
+    const totalUsers = uniquePhones.size;
 
     const totalRevenue = await prisma.payment.aggregate({
       where: { status: "completed" },
@@ -122,6 +135,7 @@ router.get("/summary", authMiddleware, async (req, res) => {
 
     const activeSessions = 0; // Placeholder for now
 
+    logger.info("Admin summary fetched", { totalUsers, totalRevenue: totalRevenue._sum.amount || 0 });
     res.json({
       success: true,
       data: {
@@ -132,7 +146,7 @@ router.get("/summary", authMiddleware, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error("Summary error:", error);
+    logger.error("Summary error", { error: error.message });
     res.status(500).json({ success: false, error: "Internal Server Error" });
   }
 });
@@ -142,6 +156,7 @@ router.get("/summary", authMiddleware, async (req, res) => {
 // ============================
 router.get("/users", authMiddleware, async (req, res) => {
   try {
+    logger.info("Fetching users", { admin: req.user.username, query: req.query });
     const { search = "", status = "all", page = 1, limit = 10 } = req.query;
     const pageNum = Number(page) || 1;
     const per = Number(limit) || 10;
@@ -162,8 +177,10 @@ router.get("/users", authMiddleware, async (req, res) => {
       prisma.user.count({ where }),
     ]);
     const totalPages = Math.max(1, Math.ceil(total / per));
+    logger.info("Users fetched successfully", { count: users.length, total });
     return res.json({ success: true, data: { users, total, page: pageNum, totalPages } });
   } catch (error) {
+    logger.error("Users fetch error", { error: error.message });
     return res.status(500).json({ success: false, error: "Failed to fetch users" });
   }
 });
@@ -198,33 +215,49 @@ router.delete("/users/:id", authMiddleware, async (req, res) => {
 // ============================
 router.get("/transactions", authMiddleware, async (req, res) => {
   try {
+    logger.info("Fetching transactions", { admin: req.user.username, query: req.query });
     const { search = "", status = "all", page = 1, limit = 10, startDate = null, endDate = null } = req.query;
-    let sql = "SELECT transaction_id AS id, phone, amount, status, time_purchased AS timestamp, mpesa_ref FROM payments WHERE 1=1";
-    const params = [];
-    if (status !== "all") {
-      sql += " AND status = ?";
-      params.push(status);
-    }
-    if (startDate) {
-      sql += " AND time_purchased >= ?";
-      params.push(startDate);
-    }
-    if (endDate) {
-      sql += " AND time_purchased <= ?";
-      params.push(endDate);
-    }
-    sql += " ORDER BY time_purchased DESC";
-    const [rows] = await db.promise().query(sql, params);
-    let txns = rows.map((r) => ({ ...r, package: "" }));
-    const q = String(search).toLowerCase();
-    if (q) txns = txns.filter((t) => t.phone.toLowerCase().includes(q) || String(t.id).toLowerCase().includes(q) || String(t.mpesa_ref || '').toLowerCase().includes(q));
     const pageNum = Number(page) || 1;
     const per = Number(limit) || 10;
-    const total = txns.length;
+    const where = {};
+    if (status !== "all") {
+      where.status = status;
+    }
+    if (startDate) {
+      where.timePurchased = { gte: new Date(startDate) };
+    }
+    if (endDate) {
+      where.timePurchased = { ...where.timePurchased, lte: new Date(endDate) };
+    }
+    if (search) {
+      where.OR = [
+        { phone: { contains: search, mode: "insensitive" } },
+        { transactionId: { contains: search, mode: "insensitive" } },
+        { mpesaRef: { contains: search, mode: "insensitive" } }
+      ];
+    }
+    const [transactions, total] = await Promise.all([
+      prisma.payment.findMany({
+        where,
+        skip: (pageNum - 1) * per,
+        take: per,
+        orderBy: { timePurchased: "desc" },
+        select: {
+          transactionId: true,
+          phone: true,
+          amount: true,
+          status: true,
+          timePurchased: true,
+          mpesaRef: true
+        }
+      }),
+      prisma.payment.count({ where })
+    ]);
     const totalPages = Math.max(1, Math.ceil(total / per));
-    const slice = txns.slice((pageNum - 1) * per, pageNum * per);
-    return res.json({ success: true, data: { transactions: slice, total, page: pageNum, totalPages } });
+    logger.info("Transactions fetched successfully", { count: transactions.length, total });
+    return res.json({ success: true, data: { transactions, total, page: pageNum, totalPages } });
   } catch (error) {
+    logger.error("Transactions fetch error", { error: error.message });
     return res.status(500).json({ success: false, error: "Failed to fetch transactions" });
   }
 });

@@ -96,6 +96,21 @@ model Loan {
   interestRate  Float    @default(0.1) // 10% interest
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  repayments    LoanRepayment[]
 
   @@index([userId, status])
+}
+
+model LoanRepayment {
+  id            Int      @id @default(autoincrement())
+  loanId        Int
+  loan          Loan     @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  transactionId String   @unique
+  amount        Int      // Amount being repaid
+  status        String   @default("pending") // pending, completed, failed
+  mpesaRef      String?  // M-Pesa checkout request ID
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([loanId, status])
 }

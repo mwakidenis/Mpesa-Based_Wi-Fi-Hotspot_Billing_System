@@ -16,6 +16,8 @@ import LoanStatusDashboard from "@/components/LoanStatusDashboard"
 import LoanNotificationCenter from "@/components/LoanNotificationCenter"
 import RealTimeLoanMessages from "@/components/RealTimeLoanMessages"
 import LoanBorrowButton from "@/components/LoanBorrowButton"
+import LoanEligibilityStatus from "@/components/LoanEligibilityStatus"
+import FeedbackHub from "@/components/FeedbackHub"
 
 interface Loan {
   id: number
@@ -140,11 +142,17 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Real-Time Loan Dashboard */}
+        {/* Real-Time Overview */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          <LoanStatusDashboard />
+          <LoanEligibilityStatus />
           <LoanNotificationCenter />
         </div>
+
+        {/* Feedback Hub */}
+        <FeedbackHub className="mb-8" />
+
+        {/* Loan Status Dashboard */}
+        <LoanStatusDashboard className="mb-8" />
 
         {/* Real-Time Messages */}
         <RealTimeLoanMessages className="mb-8" />

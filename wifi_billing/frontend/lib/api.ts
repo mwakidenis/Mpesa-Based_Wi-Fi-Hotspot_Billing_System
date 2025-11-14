@@ -4,6 +4,9 @@ export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost
 // Daraja Mpesa API base URL
 export const DARAJA_API_BASE_URL = "http://localhost:3000"
 
+// Socket.IO import for real-time updates
+import { io, Socket } from 'socket.io-client'
+
 export interface ApiResponse<T = any> {
   success: boolean
   data?: T
@@ -378,10 +381,23 @@ class ApiClient {
     })
   }
 
-  async repayLoan(loanId: number, amount: number): Promise<ApiResponse<Loan>> {
+  async repayLoan(loanId: number, amount: number, macAddress?: string): Promise<ApiResponse<Loan>> {
     return this.request(`/api/loans/repay/${loanId}`, {
       method: "POST",
-      body: JSON.stringify({ amount }),
+      body: JSON.stringify({ amount, macAddress }),
+    })
+  }
+
+  async initiateLoanRepayment(loanId: number, macAddress?: string): Promise<ApiResponse<{
+    transactionId: string
+    mpesaRef: string
+    amount: number
+    status: string
+    willGrantWifiAccess: boolean
+  }>> {
+    return this.request(`/api/loans/repay/initiate/${loanId}`, {
+      method: "POST",
+      body: JSON.stringify({ macAddress }),
     })
   }
 
@@ -417,113 +433,100 @@ class ApiClient {
 
 export const apiClient = new ApiClient()
 
-// WebSocket connection for real-time updates
+// WebSocket connection for real-time updates using Socket.IO
 export class WebSocketClient {
-  private ws: WebSocket | null = null
+  private socket: Socket | null = null
   private reconnectAttempts = 0
   private maxReconnectAttempts = 5
   private reconnectInterval = 5000
-  private phone: string | null = null
+  private userId: number | null = null
+  private userPhone: string | null = null
 
-  connect(phone?: string) {
+  connect(userId?: number, userPhone?: string) {
     // Clean up existing connection first
-    if (this.ws) {
-      console.log("Cleaning up existing WebSocket connection")
-      this.ws.close(1000, "New connection requested")
-      this.ws = null
+    if (this.socket) {
+      console.log("Cleaning up existing Socket.IO connection")
+      this.socket.disconnect()
+      this.socket = null
     }
 
-    this.phone = phone || null
-    const wsUrl = `${API_BASE_URL.replace("http", "ws")}/ws`
+    this.userId = userId || null
+    this.userPhone = userPhone || null
+    const wsUrl = API_BASE_URL
 
     try {
-      console.log("Creating new WebSocket connection to:", wsUrl)
-      this.ws = new WebSocket(wsUrl)
+      console.log("Creating new Socket.IO connection to:", wsUrl)
+      this.socket = io(wsUrl, {
+        transports: ['websocket', 'polling'],
+        timeout: 20000,
+      })
 
-      this.ws.onopen = () => {
-        console.log("WebSocket connected successfully")
+      this.socket.on('connect', () => {
+        console.log("Socket.IO connected successfully")
         this.reconnectAttempts = 0
         // Emit connection status event
         window.dispatchEvent(new CustomEvent("websocket_connected", { detail: { connected: true } }))
-        // Subscribe to support updates for this phone
-        if (this.phone) {
-          this.send({ type: "join_support", phone: this.phone })
+        // Join user-specific room for loan updates
+        if (this.userId) {
+          this.socket?.emit('join_loan_room', this.userId)
         }
-      }
-
-      this.ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data)
-          this.handleMessage(data)
-        } catch (error) {
-          console.error("Failed to parse WebSocket message:", error)
+        // Join support room with phone number
+        if (this.userPhone) {
+          this.socket?.emit('join_support', this.userPhone)
         }
-      }
+      })
 
-      this.ws.onclose = (event) => {
-        console.log("WebSocket disconnected:", event.code, event.reason)
+      this.socket.on('disconnect', () => {
+        console.log("Socket.IO disconnected")
         // Emit disconnection status event
         window.dispatchEvent(new CustomEvent("websocket_connected", { detail: { connected: false } }))
-        // Only reconnect if it wasn't a clean close and we haven't exceeded max attempts
-        if (event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
-          this.reconnect()
-        }
-      }
+        this.reconnect()
+      })
 
-      this.ws.onerror = (error) => {
-        console.error("WebSocket error:", error)
-        // Emit disconnection status event
-        window.dispatchEvent(new CustomEvent("websocket_connected", { detail: { connected: false } }))
-      }
+      this.socket.on('connect_error', (error) => {
+        console.error('Socket.IO connection error:', error)
+        this.reconnect()
+      })
+
+      // Listen for loan events
+      this.socket.on('loan_created', (data: any) => {
+        console.log('Loan created event:', data)
+        window.dispatchEvent(new CustomEvent('loan_created', { detail: data }))
+      })
+
+      this.socket.on('loan_repaid', (data: any) => {
+        console.log('Loan repaid event:', data)
+        window.dispatchEvent(new CustomEvent('loan_repaid', { detail: data }))
+      })
+
+      this.socket.on('loan_overdue', (data: any) => {
+        console.log('Loan overdue event:', data)
+        window.dispatchEvent(new CustomEvent('loan_overdue', { detail: data }))
+      })
+
+      this.socket.on('user_balanceUpdated', (data: any) => {
+        console.log('Balance updated event:', data)
+        window.dispatchEvent(new CustomEvent('user_balanceUpdated', { detail: data }))
+      })
+
+      this.socket.on('user_eligibilityUpdate', (data: any) => {
+        console.log('Eligibility updated event:', data)
+        window.dispatchEvent(new CustomEvent('user_eligibilityUpdate', { detail: data }))
+      })
+
+      // Listen for support request events
+      this.socket.on('support_status_update', (data: any) => {
+        console.log('Support status update event:', data)
+        window.dispatchEvent(new CustomEvent('support_request_update', { detail: data }))
+      })
+
+      this.socket.on('support_request_created', (data: any) => {
+        console.log('Support request created event:', data)
+        window.dispatchEvent(new CustomEvent('support_request_update', { detail: data }))
+      })
+
     } catch (error) {
-      console.error("Failed to create WebSocket connection:", error)
-    }
-  }
-
-  private handleMessage(data: any) {
-    // Emit custom events for different message types
-    if (data.type === "payment_status") {
-      window.dispatchEvent(
-        new CustomEvent("payment_status_update", {
-          detail: data.payload,
-        }),
-      )
-    } else if (data.type === "user_connected") {
-      window.dispatchEvent(
-        new CustomEvent("user_connected", {
-          detail: data.payload,
-        }),
-      )
-    } else if (data.type === "user_disconnected") {
-      window.dispatchEvent(
-        new CustomEvent("user_disconnected", {
-          detail: data.payload,
-        }),
-      )
-    } else if (data.type === "support_request_update") {
-      window.dispatchEvent(
-        new CustomEvent("support_request_update", {
-          detail: data.payload,
-        }),
-      )
-    } else if (data.type === "loan_created") {
-      window.dispatchEvent(
-        new CustomEvent("loan_created", {
-          detail: data,
-        }),
-      )
-    } else if (data.type === "loan_repaid") {
-      window.dispatchEvent(
-        new CustomEvent("loan_repaid", {
-          detail: data,
-        }),
-      )
-    } else if (data.type === "loan_overdue") {
-      window.dispatchEvent(
-        new CustomEvent("loan_overdue", {
-          detail: data,
-        }),
-      )
+      console.error("Failed to create Socket.IO connection:", error)
     }
   }
 
@@ -531,22 +534,25 @@ export class WebSocketClient {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++
       setTimeout(() => {
-        console.log(`Attempting to reconnect WebSocket (${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
-        this.connect(this.phone || undefined)
+        console.log(`Attempting to reconnect Socket.IO (${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
+        this.connect(this.userId || undefined, this.userPhone || undefined)
       }, this.reconnectInterval)
     }
   }
 
   disconnect() {
-    if (this.ws) {
-      this.ws.close()
-      this.ws = null
+    if (this.socket) {
+      if (this.userId) {
+        this.socket.emit('leave_loan_room', this.userId)
+      }
+      this.socket.disconnect()
+      this.socket = null
     }
   }
 
-  send(data: any) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(data))
+  send(event: string, data: any) {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit(event, data)
     }
   }
 }

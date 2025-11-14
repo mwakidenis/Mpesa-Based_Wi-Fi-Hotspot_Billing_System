@@ -1,4 +1,5 @@
 const prisma = require("../config/prismaClient");
+const logger = require("../src/logger");
 
 // Check if user is eligible for a loan
 async function checkEligibility(userId) {
@@ -52,7 +53,7 @@ async function checkEligibility(userId) {
       mostFrequentAmount: loanAmount
     };
   } catch (error) {
-    console.error('Error checking loan eligibility:', error);
+    logger.error('Error checking loan eligibility', { error: error.message });
     return {
       eligible: false,
       reason: 'Error checking eligibility'
@@ -116,7 +117,7 @@ async function createLoan(userId, amount) {
 
     return loan;
   } catch (error) {
-    console.error('Error creating loan:', error);
+    logger.error('Error creating loan', { error: error.message });
     throw error;
   }
 }
@@ -165,7 +166,7 @@ async function repayLoan(loanId, repaymentAmount) {
 
     return updatedLoan;
   } catch (error) {
-    console.error('Error repaying loan:', error);
+    logger.error('Error repaying loan', { error: error.message });
     throw error;
   }
 }
@@ -188,7 +189,7 @@ async function getUserLoans(userId) {
 
     return loans;
   } catch (error) {
-    console.error('Error getting user loans:', error);
+    logger.error('Error getting user loans', { error: error.message });
     throw error;
   }
 }
@@ -215,7 +216,7 @@ async function getAllLoans(filters = {}) {
 
     return loans;
   } catch (error) {
-    console.error('Error getting all loans:', error);
+    logger.error('Error getting all loans', { error: error.message });
     throw error;
   }
 }
@@ -239,7 +240,7 @@ async function checkOverdueLoans() {
 
     return overdueLoans.count;
   } catch (error) {
-    console.error('Error checking overdue loans:', error);
+    logger.error('Error checking overdue loans', { error: error.message });
     throw error;
   }
 }
@@ -310,7 +311,7 @@ async function createBypassLoan(userId, amount) {
 
     return loan;
   } catch (error) {
-    console.error('Error creating bypass loan:', error);
+    logger.error('Error creating bypass loan', { error: error.message });
     throw error;
   }
 }

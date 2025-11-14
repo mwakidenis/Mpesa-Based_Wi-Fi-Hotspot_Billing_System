@@ -30,15 +30,13 @@ app.use(express.urlencoded({ extended: true })); // URL-encoded middleware
 
 // -------------------- PAYMENT ENDPOINT FOR FRONTEND --------------------
 app.post("/pay", (req, res) => {
-  console.log("Request received at /pay");
-  console.log("Headers:", req.headers);
-  console.log("Body:", req.body);
+  logger.info("Request received at /pay", { headers: req.headers, body: req.body });
 
   // Get data from either JSON body or URL-encoded body
   const phone = req.body.phone;
   const amount = req.body.amount;
 
-  console.log("Parsed phone:", phone, "amount:", amount);
+  logger.info("Parsed phone and amount", { phone, amount });
 
   // Simple response for testing
   res.json({
@@ -107,7 +105,7 @@ app.get("/admin/payments", authMiddleware, async (req, res) => {
     });
     res.json({ success: true, data: payments });
   } catch (err) {
-    console.error(err);
+    logger.error("Database error in admin payments", { error: err.message });
     res.status(500).json({ success: false, error: "Database error" });
   }
 });
@@ -138,13 +136,13 @@ app.get("/admin/summary", authMiddleware, async (req, res) => {
       },
     });
   } catch (err) {
-    console.error(err);
+    logger.error("Database error in admin summary", { error: err.message });
     res.status(500).json({ success: false, error: "Internal Server Error" });
   }
 });
 
 // -------------------- USERS --------------------
-app.get("/users", authMiddleware, async (req, res) => {
+app.get("/api/users", authMiddleware, async (req, res) => {
   try {
     const { search = "", status = "all", page = 1, limit = 10 } = req.query;
     const pageNum = Number(page) || 1;
@@ -167,13 +165,13 @@ app.get("/users", authMiddleware, async (req, res) => {
     const totalPages = Math.max(1, Math.ceil(total / per));
     res.json({ success: true, data: { users, total, page: pageNum, totalPages } });
   } catch (err) {
-    console.error(err);
+    logger.error("Database error fetching users", { error: err.message });
     res.status(500).json({ success: false, error: "Failed to fetch users" });
   }
 });
 
 // Disconnect user by ID
-app.post("/users/:id/disconnect", authMiddleware, async (req, res) => {
+app.post("/api/users/:id/disconnect", authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const payment = await prisma.payment.findUnique({
@@ -186,7 +184,7 @@ app.post("/users/:id/disconnect", authMiddleware, async (req, res) => {
     const resp = await disconnectByMac(mac);
     res.json({ success: resp.success, message: resp.message });
   } catch (err) {
-    console.error(err);
+    logger.error("Error disconnecting user", { error: err.message });
     res.status(500).json({ success: false, error: "Failed to disconnect user" });
   }
 });
@@ -220,8 +218,8 @@ app.use("/loans", loanRoutes);
 app.use("/api/loans", loanRoutes);
 
 // -------------------- ADMIN ROUTES --------------------
-// const adminRoutes = require("./routes/admin");
-// app.use("/api/admin", adminRoutes);
+const adminRoutes = require("./routes/admin");
+app.use("/api/admin", adminRoutes);
 
 // -------------------- M-PESA ROUTES --------------------
 app.use("/api", mpesaRoutes);
@@ -230,18 +228,55 @@ app.use("/api", mpesaCallback);
 // -------------------- SUPPORT ROUTES --------------------
 app.use("/api/support", supportRoutes);
 
+// -------------------- TRANSACTION ROUTES --------------------
+const transactionRoutes = require("./routes/transactions");
+app.use("/api/transactions", transactionRoutes);
+
 
 // -------------------- DEVICE INFO ROUTE --------------------
-app.get("/api/device/info", (req, res) => {
-  // Mock device info for development
-  res.json({
-    success: true,
-    data: {
-      macAddress: "00:11:22:33:44:55",
-      ipAddress: "192.168.1.100",
-      deviceId: "DEV001"
+app.get("/api/device/info", async (req, res) => {
+  try {
+    // Get client IP address
+    const clientIP = req.headers['x-forwarded-for']?.split(',')[0] ||
+                     req.connection.remoteAddress ||
+                     req.socket.remoteAddress ||
+                     req.connection.socket?.remoteAddress ||
+                     "127.0.0.1";
+
+    // Clean up IPv6 localhost
+    const ipAddress = clientIP.replace(/^::ffff:/, '');
+
+    logger.info(`Device info request from IP: ${ipAddress}`);
+
+    // Try to get real device info from MikroTik first
+    const { getDeviceInfoByIP } = require("./config/mikrotik");
+    const mikrotikResult = await getDeviceInfoByIP(ipAddress);
+
+    if (mikrotikResult.success) {
+      logger.info("Retrieved real device info from MikroTik", mikrotikResult.data);
+      return res.json({
+        success: true,
+        data: mikrotikResult.data
+      });
     }
-  });
+
+    // Fallback to mock data for development or when MikroTik is not available
+    logger.info("Using mock device info (MikroTik not available or device not found)");
+    res.json({
+      success: true,
+      data: {
+        macAddress: "00:11:22:33:44:55",
+        ipAddress: ipAddress,
+        deviceId: "DEV001"
+      }
+    });
+  } catch (error) {
+    logger.error("Error retrieving device info:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to retrieve device information"
+    });
+  }
 });
 
 // -------------------- WELCOME ENDPOINT --------------------
@@ -261,40 +296,40 @@ app.get("/", (req, res) => {
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: "*",
     methods: ["GET", "POST"]
   }
 });
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
+  logger.info('User connected:', socket.id);
 
   // Handle loan-related events
   socket.on('join_loan_room', (userId) => {
     socket.join(`loan_${userId}`);
-    console.log(`User ${userId} joined loan room`);
+    logger.info(`User ${userId} joined loan room`);
   });
 
   socket.on('leave_loan_room', (userId) => {
     socket.leave(`loan_${userId}`);
-    console.log(`User ${userId} left loan room`);
+    logger.info(`User ${userId} left loan room`);
   });
 
   // Handle admin loan monitoring
   socket.on('join_admin_loans', () => {
     socket.join('admin_loans');
-    console.log('Admin joined loan monitoring room');
+    logger.info('Admin joined loan monitoring room');
   });
 
   // Handle support requests
   socket.on('join_support', (phone) => {
     socket.join(`support_${phone}`);
-    console.log(`User with phone ${phone} joined support room`);
+    logger.info(`User with phone ${phone} joined support room`);
   });
 
   socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
+    logger.info('User disconnected:', socket.id);
   });
 });
 
@@ -320,7 +355,7 @@ global.emitLoanEvent = emitLoanEvent;
 global.emitSupportEvent = emitSupportEvent;
 
 // -------------------- START SERVER --------------------
-server.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`WebSocket server ready for real-time updates`);
+server.listen(PORT, '0.0.0.0', () => {
+  logger.info(`Server running on http://0.0.0.0:${PORT}`);
+  logger.info(`WebSocket server ready for real-time updates`);
 });

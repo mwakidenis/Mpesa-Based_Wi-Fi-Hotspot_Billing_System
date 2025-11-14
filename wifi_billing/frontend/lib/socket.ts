@@ -8,9 +8,11 @@ export class WebSocketClient {
   private maxReconnectAttempts = 5
   private reconnectInterval = 5000
   private userId: number | null = null
+  private userPhone: string | null = null
 
-  connect(userId?: number) {
+  connect(userId?: number, userPhone?: string) {
     this.userId = userId || null
+    this.userPhone = userPhone || null
     const wsUrl = `${API_BASE_URL.replace("http", "ws")}/`
 
     try {
@@ -27,6 +29,10 @@ export class WebSocketClient {
         // Join user-specific room for loan updates
         if (this.userId) {
           this.socket?.emit('join_loan_room', this.userId)
+        }
+        // Join support room with phone number
+        if (this.userPhone) {
+          this.socket?.emit('join_support', this.userPhone)
         }
       })
 
@@ -68,6 +74,17 @@ export class WebSocketClient {
         window.dispatchEvent(new CustomEvent('user_eligibilityUpdate', { detail: data }))
       })
 
+      // Listen for support request events
+      this.socket.on('support_status_update', (data: any) => {
+        console.log('Support status update event:', data)
+        window.dispatchEvent(new CustomEvent('support_request_update', { detail: data }))
+      })
+
+      this.socket.on('support_request_created', (data: any) => {
+        console.log('Support request created event:', data)
+        window.dispatchEvent(new CustomEvent('support_request_update', { detail: data }))
+      })
+
     } catch (error) {
       console.error('Failed to connect WebSocket:', error)
     }
@@ -78,7 +95,7 @@ export class WebSocketClient {
       this.reconnectAttempts++
       setTimeout(() => {
         console.log(`Attempting to reconnect WebSocket (${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
-        this.connect(this.userId || undefined)
+        this.connect(this.userId || undefined, this.userPhone || undefined)
       }, this.reconnectInterval)
     }
   }

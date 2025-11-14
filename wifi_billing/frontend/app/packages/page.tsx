@@ -79,7 +79,7 @@ export default function PackagesPage() {
       console.error("Error fetching device info:", error)
       setMacAddress("UNAVAILABLE")
       toast.error("Could not retrieve device information", {
-        description: "Please refresh the page and try again",
+        description: "Please check your network connection and refresh the page",
       })
     }
   }

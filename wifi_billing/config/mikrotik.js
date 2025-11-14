@@ -108,19 +108,19 @@ async function getActiveDevices() {
 async function getStatus() {
   const client = getClient();
   if (!client) return { success: true, data: { status: "ok", uptime: 0, connectedUsers: 0 } };
-  
+
   try {
     await client.connect();
     const active = await client.write(["/ip/hotspot/active/print"]);
     await client.close();
-    
-    return { 
-      success: true, 
-      data: { 
-        status: "ok", 
-        uptime: 0, 
-        connectedUsers: (active || []).length 
-      } 
+
+    return {
+      success: true,
+      data: {
+        status: "ok",
+        uptime: 0,
+        connectedUsers: (active || []).length
+      }
     };
   } catch (error) {
     console.error("MikroTik get status error:", error);
@@ -128,11 +128,40 @@ async function getStatus() {
   }
 }
 
-module.exports = { 
-  RouterOSClient, 
-  whitelistMAC, 
-  disconnectByMac, 
-  disconnectAllUsers, 
-  getActiveDevices, 
-  getStatus 
+async function getDeviceInfoByIP(ipAddress) {
+  const client = getClient();
+  if (!client) return { success: false, error: "MikroTik not enabled" };
+
+  try {
+    await client.connect();
+    const active = await client.write(["/ip/hotspot/active/print"]);
+    await client.close();
+
+    const device = (active || []).find((a) => a.address === ipAddress);
+    if (device) {
+      return {
+        success: true,
+        data: {
+          macAddress: device["mac-address"],
+          ipAddress: device.address,
+          deviceId: device["user"] || `DEV_${device[".id"]}`
+        }
+      };
+    } else {
+      return { success: false, error: "Device not found in active connections" };
+    }
+  } catch (error) {
+    console.error("MikroTik get device info by IP error:", error);
+    return { success: false, error: error.message || String(error) };
+  }
+}
+
+module.exports = {
+  RouterOSClient,
+  whitelistMAC,
+  disconnectByMac,
+  disconnectAllUsers,
+  getActiveDevices,
+  getStatus,
+  getDeviceInfoByIP
 };

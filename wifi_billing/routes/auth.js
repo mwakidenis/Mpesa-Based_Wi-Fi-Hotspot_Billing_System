@@ -2,12 +2,13 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const prisma = require("../config/prismaClient");
+const logger = require("../src/logger");
 
 const router = express.Router();
 
 // Register new user
 router.post("/register", async (req, res) => {
-  console.log("Registration request received:", req.body);
+  logger.info("Registration request received", { body: req.body });
 
   const { username, email, phone, password } = req.body;
 
@@ -71,7 +72,7 @@ router.post("/register", async (req, res) => {
       }
     });
 
-    console.log("User created:", user.id);
+    logger.info("User created", { userId: user.id });
 
     // Generate JWT token
     const token = jwt.sign(
@@ -94,7 +95,7 @@ router.post("/register", async (req, res) => {
       }
     });
   } catch (error) {
-    console.error("Error creating user:", error);
+    logger.error("Error creating user", { error: error.message });
     res.status(500).json({
       success: false,
       error: "Failed to create account"
@@ -104,7 +105,7 @@ router.post("/register", async (req, res) => {
 
 // Login user
 router.post("/login", async (req, res) => {
-  console.log("Login request received:", req.body);
+  logger.info("Login request received", { body: req.body });
 
   const { username, password } = req.body;
 
@@ -189,7 +190,7 @@ router.post("/login", async (req, res) => {
       }
     });
   } catch (error) {
-    console.error("Error logging in:", error);
+    logger.error("Error logging in", { error: error.message });
     res.status(500).json({
       success: false,
       error: "Login failed"
@@ -233,7 +234,7 @@ router.get("/profile", async (req, res) => {
       data: user
     });
   } catch (error) {
-    console.error("Error fetching profile:", error);
+    logger.error("Error fetching profile", { error: error.message });
     res.status(401).json({
       success: false,
       error: "Invalid token"
