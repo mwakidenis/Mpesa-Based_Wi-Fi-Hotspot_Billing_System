@@ -1,10 +1,10 @@
 {
   "name": "Denis K.",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
-    "dev": "node index.js",
-    "start": "node index.js",
+    "dev": "node server.js",
+    "start": "node server.js",
     "build": "echo 'No build step required for Node.js'",
     "postinstall": "npx prisma generate",
     "pm2:start": "pm2 start ecosystem.config.js",

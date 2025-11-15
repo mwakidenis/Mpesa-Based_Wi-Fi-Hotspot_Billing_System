@@ -474,7 +474,6 @@ export default function SupportPage() {
                         onChange={(e) => handleInputChange("phone", e.target.value)}
                         className="bg-white/50 dark:bg-slate-700/50 border-slate-300 dark:border-white/10"
                         required
-                        readOnly={isAuthenticated}
                       />
                     </div>
                   </div>
