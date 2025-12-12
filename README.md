@@ -36,7 +36,7 @@ A comprehensive WiFi billing system that allows users to purchase internet acces
 
 ## 🚀 Live Demo
 
-Check it out online: [https://anotherone-production-dcdb.up.railway.app/](https://anotherone-production-dcdb.up.railway.app/)
+👉 View Live Demo
 
 ---
 
