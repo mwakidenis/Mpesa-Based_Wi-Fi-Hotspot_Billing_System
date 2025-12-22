@@ -1,7 +1,7 @@
 # Okoa Internet Loan Feature Implementation
 
 ## Backend Implementation
-- [x] Update Prisma Schema: Add Loan and UserActivity models with proper relationships
+- [x] Update Prisma Schema: Add Loan and UserActivity models with proper relationships 
 - [x] Create Loan Eligibility Service: Function to check 3-week activity and calculate most frequent purchase amount
 - [x] Implement Loan Routes: `/api/loans/request`, `/api/loans/repay`, `/api/loans/status`, `/api/loans/admin`
 - [x] Add Socket.IO Integration: Mount Socket.IO server in `index.js` for realtime loan updates
