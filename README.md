@@ -7,7 +7,7 @@
 [![MIT License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-Online-brightgreen)](https://anotherone-production-dcdb.up.railway.app/)
 
-A comprehensive WiFi billing system that allows users to purchase internet access via **M-Pesa STK Push payments**. Perfect for cybercafés, small businesses, and public WiFi hotspots, with MikroTik integration for secure MAC-based access control.  
+A comprehensive WiFi billing system that allows users to purchase internet access via **M-Pesa STK Push payments**. Perfect for cybercafés, small businesses, and public WiFi hotspots, with MikroTik integration for secure MAC-based access control. 
 
 ---
 
