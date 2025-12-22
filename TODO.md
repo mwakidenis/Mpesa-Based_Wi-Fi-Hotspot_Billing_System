@@ -7,7 +7,7 @@
 - [x] Add Socket.IO Integration: Mount Socket.IO server in `index.js` for realtime loan updates
 
 ## Frontend Implementation
-- [x] Update Frontend API Client: Add loan-related methods to `api.ts`
+- [x] Update Frontend API Client: Add loan-related methods to `api.ts` 
 - [x] Create LoanBorrowButton component for packages page
 - [x] Integrate Okoa button into packages page
 - [x] Create automated testing for eligibility and loan borrowing
