@@ -4,7 +4,7 @@
 - [x] Update Prisma Schema: Add Loan and UserActivity models with proper relationships 
 - [x] Create Loan Eligibility Service: Function to check 3-week activity and calculate most frequent purchase amount
 - [x] Implement Loan Routes: `/api/loans/request`, `/api/loans/repay`, `/api/loans/status`, `/api/loans/admin`
-- [x] Add Socket.IO Integration: Mount Socket.IO server in `index.js` for realtime loan updates
+- [x] Add Socket.IO Integration: Mount Socket.IO server in `index.js` for realtime loan updates 
 
 ## Frontend Implementation
 - [x] Update Frontend API Client: Add loan-related methods to `api.ts` 
