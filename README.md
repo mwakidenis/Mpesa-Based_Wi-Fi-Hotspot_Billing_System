@@ -65,37 +65,45 @@ A comprehensive WiFi billing system that allows users to purchase internet acces
 ```bash
 git clone https://github.com/Nigiddy/Mpesa_Based-WiFi-Billing-System.git
 cd Mpesa_Based-WiFi-Billing-System
-2. Install Dependencies
+```
+### 2. Install Dependencies
 bash
 Copy code
+```
 npm install
 cd frontend
 npm install
 cd ..
-3. Configure Database
+```
+### 3. Configure Database
 Create MySQL database wifi_billing
 
-Add .env file with credentials:
+**Add .env file with credentials:**
 
 env
 Copy code
 # M-Pesa
+
+```
 MPESA_CONSUMER_KEY=your_key
 MPESA_CONSUMER_SECRET=your_secret
 MPESA_PASSKEY=your_passkey
 MPESA_SHORTCODE=your_shortcode
 MPESA_CALLBACK_URL=http://localhost:5000/api/mpesa/callback
-
+```
 # Database
 DATABASE_URL="mysql://username:password@localhost:3306/wifi_billing"
 
 # JWT
+```
 JWT_SECRET=your_jwt_secret
-
+```
 # Admin
+
+```
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=your_admin_password
-
+```
 # Server
 PORT=5000
 
@@ -106,51 +114,62 @@ MIKROTIK_PASSWORD=password
 4. Database Migration
 bash
 Copy code
+```
 npx prisma migrate dev --name init
 npx prisma generate
+```
 5. Create Admin User
 bash
 Copy code
+```
 node scripts/addAdmin.js
+```
 🏃 Running the Application
 Backend
 bash
 Copy code
+```
 npm start
 Backend: http://localhost:5000
-
+```
 Frontend
 bash
 Copy code
+```
 cd frontend
 npm run dev
+```
 Frontend: http://localhost:3000
 
 Hotspot Login Server
 bash
 Copy code
+```
 python -m http.server 8080 --directory hotspot
 Login page: http://localhost:8080/login.html
-
+```
+---
 👥 Usage
-Users
-Connect to WiFi
+Users.
+**Connect to WiFi**
 
-Open browser → redirected to login
+- Open browser → redirected to login
 
-Select package & enter phone number
+- Select package & enter phone number
 
-Complete M-Pesa STK Push
+- Complete M-Pesa STK Push
 
-Access granted automatically
+- Access granted automatically
 
-Admins
+### Admins
 Login at http://localhost:3000/admin/login
 
 Manage payments, users, and system status
 
 🔗 API Endpoints
 Payment
+
+```
 
 POST /api/pay - Initiate payment
 
@@ -163,27 +182,28 @@ POST /api/admin/login - Admin login
 GET /api/admin/payments - List payments
 
 GET /api/admin/users - List users
-
-User
-
+```
+### User
+```
 GET /api/packages - List packages
 
 GET /api/user/status - Access status
-
-🤝 Contributing
+```
+---
+### 🤝 Contributing
 Fork the repo
 
-Create branch: git checkout -b feature-name
+- Create branch: git checkout -b feature-name
 
-Make changes & test
+- Make changes & test
 
-Commit: git commit -am 'Add feature'
+- Commit: git commit -am 'Add feature'
 
-Push: git push origin feature-name
+- Push: git push origin feature-name
 
-Open Pull Request
-
-⚖ License
+- Open Pull Request
+---
+### ⚖ License
 MIT License – see LICENSE for details.
 
 💌 Support
