@@ -7,7 +7,7 @@
     "command": "pnpm install --no-frozen-lockfile && pnpm build && pnpm export",
     // The folder containing the final output after build/export
     "directory": "wifi_billing/frontend/out",
-    // Run the build command inside the frontend folder
+    // Run the build command inside the frontend folder (NOT out/)
     "cwd": "wifi_billing/frontend"
   }
 }
