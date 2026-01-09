@@ -11,6 +11,14 @@ A comprehensive WiFi billing system that allows users to purchase internet acces
 
 ---
 
+## 📸 Screenshots
+
+![Screenshot 2026-01-09 213840](https://github.com/mwakidenis/Mpesa-Based_Wi-Fi-Hotspot_Billing_System/blob/main/public/Screenshot%202026-01-09%20213840.png)
+
+![Screenshot 2026-01-09 213922](https://github.com/mwakidenis/Mpesa-Based_Wi-Fi-Hotspot_Billing_System/blob/main/public/Screenshot%202026-01-09%20213922.png)
+
+---
+
 ## 🌟 Features
 
 - **M-Pesa Integration**: STK Push payments directly from user phones  
