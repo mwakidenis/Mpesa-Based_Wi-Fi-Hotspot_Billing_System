@@ -73,6 +73,14 @@ export default function UserPortal() {
     }
   }
 
+     const getSelectedPackage = () => {
+    const pkg = packages.find((p) => p.value === amount)
+    if (!pkg) {
+      toast.error("Invalid package selected")
+      return null
+    }
+    return pkg
+  }
   const handlePayment = async () => {
     // Check if user is authenticated first
     const token = localStorage.getItem('user_token')
@@ -97,14 +105,6 @@ export default function UserPortal() {
       return
     }
 
-   const getSelectedPackage = () => {
-    const pkg = packages.find((p) => p.value === amount)
-    if (!pkg) {
-      toast.error("Invalid package selected")
-      return null
-    }
-    return pkg
-  }
     setIsLoading(true)
     setStatus("pending")
 
