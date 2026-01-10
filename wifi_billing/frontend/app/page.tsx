@@ -155,6 +155,53 @@ export default function UserPortal() {
     }
   }
 
+  // ================= FIX 5 =================
+// Handle Okoa Internet Loan
+const handleLoan = async () => {
+  if (!phone || !/^(07|01)\d{8}$/.test(phone)) {
+    toast.error("Enter a valid phone number before requesting a loan")
+    return
+  }
+
+  setIsLoanLoading(true)
+  setStatus("pending")
+
+  toast.loading("Requesting Okoa Internet loan...", { id: "loan-loading" })
+
+  try {
+    // Simulate API call for Okoa Internet loan
+    const response = await apiClient.requestLoan({
+      phone: `+254${phone.substring(1)}`,
+      macAddress,
+    })
+
+    if (response.success && response.data?.loanApproved) {
+      setStatus("completed")
+      toast.dismiss("loan-loading")
+      toast.success(`Loan approved! ${response.data.amount} Ksh credited to your account`)
+
+      // Optionally show success modal
+      setPaymentData({
+        transactionId: response.data.transactionId,
+        amount: response.data.amount,
+        package: "Okoa Internet Loan",
+        phone: `+254${phone.substring(1)}`,
+        expiresAt: response.data.expiresAt,
+      })
+      setShowSuccessModal(true)
+    } else {
+      throw new Error(response.error || "Loan request failed")
+    }
+  } catch (error) {
+    setStatus("failed")
+    toast.dismiss("loan-loading")
+    toast.error("Loan request failed. Please try again later.")
+  } finally {
+    setIsLoanLoading(false)
+  }
+}
+
+
   // ================= FIX 4 =================
   // Safe polling with package guard
   const pollPaymentStatus = async (txnId: string) => {
