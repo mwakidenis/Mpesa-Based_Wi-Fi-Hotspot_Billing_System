@@ -1,4 +1,4 @@
-# M-pesa based Wi-Fi Hotspot Billing System
+# M-pesa based Wi-Fi Hotspot Billing System 
 
 [![Node.js](https://img.shields.io/badge/Node.js-16+-green)](https://nodejs.org/)  
 [![MySQL](https://img.shields.io/badge/MySQL-8+-blue)](https://www.mysql.com/) 
