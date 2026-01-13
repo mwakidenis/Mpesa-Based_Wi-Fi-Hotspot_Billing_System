@@ -16,10 +16,10 @@ const nextConfig = {
   webpack(config) {
     config.optimization.splitChunks = {
       chunks: "all",
-      maxSize: 25 * 1024 * 1024, // 25MB
+      maxSize: 25 * 1024 * 1024,
     };
     return config;
   },
 };
 
-module.exports = nextConfig;
+export default nextConfig;
