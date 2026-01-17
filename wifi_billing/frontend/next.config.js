@@ -20,6 +20,8 @@ const nextConfig = {
     return config;
   },
   output: "export", // Static export for Cloudflare Pages
+  // Optional: set metadataBase if you use Open Graph/Twitter cards
+  // metadataBase: new URL("https://yourdomain.com"),
 };
 
 module.exports = nextConfig;
