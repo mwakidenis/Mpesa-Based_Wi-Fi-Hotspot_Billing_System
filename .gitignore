@@ -29,3 +29,5 @@ build/
 # OS-specific files
 .DS_Store
 Thumbs.db
+public/*.png
+*.png
