@@ -161,4 +161,4 @@ ISC License - see LICENSE file for details.
 
 ## Support
 
-For support, please create an issue in the GitHub repository or contact the development team.
+For support, please create an issue in the GitHub repository.
