@@ -37,7 +37,7 @@ router.post("/", async (req, res) => {
       { expiresIn: "1h" }
     );
 
-    // Send token + admin details in response 
+    // Send token and admin details in response 
     return res.json({
       success: true,
       message: "Login successful",
