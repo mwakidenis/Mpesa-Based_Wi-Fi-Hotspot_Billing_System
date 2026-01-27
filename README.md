@@ -399,4 +399,4 @@ ISC License - see LICENSE file for details.
 
 ## Support
 
-For support, strictly create an issue in the GitHub repository. Contact me only for paid consultations 
+For support, strictly create an issue in the GitHub repository. Contact me only for paid consultations regarding Mpesa-Based_Wi-Fi-Hotspot_Billing_System repository.
