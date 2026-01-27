@@ -34,4 +34,4 @@
 ### 7. Verify MikroTik Integration
 - **Action**: Test with real MikroTik hardware
 - **Verify**: Whitelist functionality works in production environment
-- Am done up to this point of testing with real Mikrotik RB750UPr, but i choose to retain this to-do file. Currently working on DDDOS management.
+- Am done up to this point of testing with real Mikrotik RB750UPr, but i choose to retain this to-do file. Currently working on DDOS management.
