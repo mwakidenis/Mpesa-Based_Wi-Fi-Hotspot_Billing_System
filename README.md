@@ -399,5 +399,5 @@ ISC License - see LICENSE file for details.
 
 ## Support
 
-For support, strictly create an issue in the GitHub repository. Am done up to the point of testing with real Mikrotik RB750UPr, Currently am working on DDDOS management on the system.
+For support, strictly create an issue in the GitHub repository. Am done up to the point of testing with real Mikrotik RB750UPr, Currently am working on DDOS management on the system.
 Contact me only for paid consultations regarding Mpesa-Based_Wi-Fi-Hotspot_Billing_System repository.
