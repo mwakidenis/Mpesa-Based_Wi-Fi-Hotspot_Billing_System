@@ -15,7 +15,7 @@
 
 1. Fork & clone the repository:
 
-```bash
+# bash
 git clone https://github.com/<your-username>/Mpesa-Based_Wi-Fi-Hotspot_Billing_System
 cd Mpesa-Based_Wi-Fi-Hotspot_Billing_System
 
