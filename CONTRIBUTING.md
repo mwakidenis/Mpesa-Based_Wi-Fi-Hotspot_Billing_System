@@ -67,7 +67,7 @@ def test_hotspot_login(client):
     response = client.post("/login", data={"username": "user", "password": "pass"})
     assert response.status_code == 200
     assert b"Welcome" in response.data
-Debugging Code
+# Debugging Code
 
 Use Python debugger:
 
@@ -75,7 +75,7 @@ import pdb; pdb.set_trace()
 
 Or use breakpoints in VS Code / PyCharm.
 
-Internals
+# Internals
 
 app.py – Flask entry point
 
@@ -91,7 +91,7 @@ static/ – CSS/JS assets
 
 tests/ – Unit & integration tests
 
-Creating a New Feature / Plugin
+# Creating a New Feature / Plugin
 
 Fork repository & create a branch.
 
@@ -103,7 +103,7 @@ Ensure all tests pass.
 
 Submit a pull request describing your feature.
 
-Code of Conduct
+# Code of Conduct
 
 Be respectful, welcoming, and constructive.
 
