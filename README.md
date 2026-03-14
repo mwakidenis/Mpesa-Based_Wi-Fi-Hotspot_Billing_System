@@ -395,7 +395,7 @@ For issues, check:
 
 ## License
 
-ISC License - see LICENSE file for details.
+MIT License - see LICENSE file for details.
 
 ## Support
 
