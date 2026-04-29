@@ -180,7 +180,7 @@ export function PaymentSuccessModal({ isOpen, onClose, paymentData }: PaymentSuc
             {/* Footer Message */}
             <div className="text-center text-sm text-slate-600 dark:text-slate-400">
               <p>Enjoy your high-speed internet connection!</p>
-              <p className="mt-1">Need help? Contact support at +254 700 000 000</p>
+              <p className="mt-1">Need help? Contact support at 0798750585</p>
             </div>
           </div>
         </div>

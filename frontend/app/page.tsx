@@ -301,7 +301,7 @@ const pollPaymentStatus = async (txnId: string) => {
                     <Input
                       id="phone"
                       type="tel"
-                      placeholder="0712 345 678"
+                      placeholder="0798750585"
                       value={phone}
                       onChange={handlePhoneChange}
                       className="bg-white/50 dark:bg-slate-700/50 border-slate-300 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:border-blue-500 dark:focus:border-blue-400"

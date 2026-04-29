@@ -81,7 +81,7 @@ export function Footer() {
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Contact</h3>
             <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
               <li>Email: support@invoicifydenis.co.ke</li>
-              <li>Phone: +254 700 000 000</li>
+              <li>Phone: 0798750585</li>
               <li>Available 24/7</li>
             </ul>
           </div>
