@@ -47,7 +47,7 @@ const contactMethods = [
     icon: Mail,
     title: "Email Support",
     description: "Send us your questions via email",
-    contact: "support@qonnect.co.ke",
+      contact: "support@invoicifydenis.co.ke",
     availability: "Response within 2 hours",
     color: "blue",
   },
