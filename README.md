@@ -412,7 +412,7 @@ For issues, check:
   </tr>
 </table>
 
-<div><h2><img src="https://res.cloudinary.com/dqv8dlj2s/image/upload/v1777492421/Screenshot_2026-04-29_225046_ggsvly.png" width="35" height="35"> Contributors</h2></div>
+## Contributors
 
 I extend my heartfelt gratitude for any invaluable contribution to this project! Your efforts play a pivotal role in elevating the repo to greater heights.
 
