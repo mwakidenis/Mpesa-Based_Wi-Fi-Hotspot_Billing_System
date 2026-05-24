@@ -12,7 +12,7 @@ importers:
         specifier: ^3.9.1
         version: 3.9.1(react-hook-form@7.54.1(react@18.0.0))
       '@prisma/client':
-        specifier: ^6.19.1
+        specifier: ^6.16.2
         version: 6.19.1(typescript@5.0.2)
       '@radix-ui/react-accordion':
         specifier: 1.2.2
@@ -96,7 +96,7 @@ importers:
         specifier: 1.1.6
         version: 1.1.6(@types/react-dom@18.0.0)(@types/react@18.0.0)(react-dom@18.0.0(react@18.0.0))(react@18.0.0)
       autoprefixer:
-        specifier: ^10.4.20
+        specifier: ^10.0.1
         version: 10.4.20(postcss@8.5.0)
       class-variance-authority:
         specifier: ^0.7.1
@@ -114,13 +114,13 @@ importers:
         specifier: 4.1.0
         version: 4.1.0
       dotenv:
-        specifier: ^17.2.3
+        specifier: ^17.2.2
         version: 17.2.3
       embla-carousel-react:
         specifier: 8.5.1
         version: 8.5.1(react@18.0.0)
       express:
-        specifier: ^5.2.1
+        specifier: ^5.1.0
         version: 5.2.1
       geist:
         specifier: ^1.3.1
@@ -129,7 +129,7 @@ importers:
         specifier: 1.4.1
         version: 1.4.1(react-dom@18.0.0(react@18.0.0))(react@18.0.0)
       jsonwebtoken:
-        specifier: ^9.0.3
+        specifier: ^9.0.2
         version: 9.0.3
       lucide-react:
         specifier: ^0.454.0
@@ -141,13 +141,13 @@ importers:
         specifier: ^0.4.4
         version: 0.4.4(react-dom@18.0.0(react@18.0.0))(react@18.0.0)
       react:
-        specifier: ^18.0.0
+        specifier: ^18
         version: 18.0.0
       react-day-picker:
         specifier: 9.8.0
         version: 9.8.0(react@18.0.0)
       react-dom:
-        specifier: ^18.0.0
+        specifier: ^18
         version: 18.0.0(react@18.0.0)
       react-hook-form:
         specifier: ^7.54.1
@@ -159,7 +159,7 @@ importers:
         specifier: 2.15.0
         version: 2.15.0(react-dom@18.0.0(react@18.0.0))(react@18.0.0)
       socket.io-client:
-        specifier: ^4.8.3
+        specifier: ^4.8.1
         version: 4.8.3
       sonner:
         specifier: latest
@@ -178,28 +178,28 @@ importers:
         version: 3.24.1
     devDependencies:
       '@types/node':
-        specifier: ^22.0.0
+        specifier: ^22
         version: 22.0.0
       '@types/react':
-        specifier: ^18.0.0
+        specifier: ^18
         version: 18.0.0
       '@types/react-dom':
-        specifier: ^18.0.0
+        specifier: ^18
         version: 18.0.0
       eslint:
-        specifier: ^8.0.0
+        specifier: ^8
         version: 8.0.0
       eslint-config-next:
         specifier: 14.0.0
         version: 14.0.0(eslint@8.0.0)(typescript@5.0.2)
       postcss:
-        specifier: ^8.5.0
+        specifier: ^8.5
         version: 8.5.0
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.17
       typescript:
-        specifier: ^5.0.2
+        specifier: ^5
         version: 5.0.2
 
 packages:
@@ -1520,9 +1520,6 @@ packages:
     resolution: {integrity: sha512-QOSvevhslijgYwRx6Rv7zKdMF8lbRmx+uQGx2+vDc+KI/eBnsy9kit5aj23AgGu3pa4t9AgwbnXWqS+iOY+2aA==}
     engines: {node: '>= 6'}
 
-  caniuse-lite@1.0.30001731:
-    resolution: {integrity: sha512-lDdp2/wrOmTRWuoB5DpfNkC0rJDU8DqRa6nYL6HK6sytw70QMopt/NIc/9SM7ylItlBWfACXk0tEn37UWM/+mg==}
-
   caniuse-lite@1.0.30001792:
     resolution: {integrity: sha512-hVLMUZFgR4JJ6ACt1uEESvQN1/dBVqPAKY0hgrV70eN3391K6juAfTjKZLKvOMsx8PxA7gsY1/tLMMTcfFLLpw==}
 
@@ -1663,15 +1660,6 @@ packages:
 
   debug@3.2.7:
     resolution: {integrity: sha512-CFjzYYAi4ThfiQvizrFQevTTXHtnCqWfe7x1AhgEscTz6ZbLbfoLRLPugTQyBth6f8ZERVUSyWHFD/7Wu4t1XQ==}
-    peerDependencies:
-      supports-color: '*'
-    peerDependenciesMeta:
-      supports-color:
-        optional: true
-
-  debug@4.4.1:
-    resolution: {integrity: sha512-KcKCqiftBJcZr++7ykoDIEwSa3XWowTfNPo92BYxjXiyYEVrUQh2aLyhxBCwww+heortUFxEJYcRzosstTEBYQ==}
-    engines: {node: '>=6.0'}
     peerDependencies:
       supports-color: '*'
     peerDependenciesMeta:
@@ -2460,11 +2448,6 @@ packages:
   mz@2.7.0:
     resolution: {integrity: sha512-z81GNO7nnYMEhrGh9LeymoE4+Yr0Wn5McHIZMK5cfQCl+NDX08sCZgUc9/6MHni9IWuFLm1Z3HTCXu2z9fN62Q==}
 
-  nanoid@3.3.11:
-    resolution: {integrity: sha512-N8SpfPUnUp1bK+PMYW8qSWdl9U+wwNWI4QKxOYDy9JAro3WMX7p2OeVRF9v+347pnakNevPmiHhNmZ2HbFA76w==}
-    engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
-    hasBin: true
-
   nanoid@3.3.12:
     resolution: {integrity: sha512-ZB9RH/39qpq5Vu6Y+NmUaFhQR6pp+M2Xt76XBnEwDaGcVAqhlvxrl3B2bKS5D3NH3QR76v3aSrKaF/Kiy7lEtQ==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
@@ -2794,6 +2777,7 @@ packages:
   recharts@2.15.0:
     resolution: {integrity: sha512-cIvMxDfpAmqAmVgc4yb7pgm/O1tmmkl/CjrvXuW+62/+7jj/iF9Ykm+hb/UJt42TREHMyd3gb+pkgoa2MxgDIw==}
     engines: {node: '>=14'}
+    deprecated: 1.x and 2.x branches are no longer active. Bump to Recharts v3 to receive latest features and bugfixes. See https://github.com/recharts/recharts/wiki/3.0-migration-guide
     peerDependencies:
       react: ^16.0.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^16.0.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
@@ -2865,11 +2849,6 @@ packages:
 
   semver@6.3.1:
     resolution: {integrity: sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA==}
-    hasBin: true
-
-  semver@7.7.2:
-    resolution: {integrity: sha512-RF0Fw+rO5AMf9MAyaRXI4AV0Ulj5lMHqVxxdSgiVbixSCXoEmmX/jk0CuJw4+3SqroYO9VoUh+HcuJivvtJemA==}
-    engines: {node: '>=10'}
     hasBin: true
 
   semver@7.8.0:
@@ -3278,7 +3257,7 @@ snapshots:
   '@eslint/eslintrc@1.4.1':
     dependencies:
       ajv: 6.12.6
-      debug: 4.4.1
+      debug: 4.4.3
       espree: 9.6.1
       globals: 13.24.0
       ignore: 5.3.2
@@ -3313,7 +3292,7 @@ snapshots:
   '@humanwhocodes/config-array@0.6.0':
     dependencies:
       '@humanwhocodes/object-schema': 1.2.1
-      debug: 4.4.1
+      debug: 4.4.3
       minimatch: 3.1.2
     transitivePeerDependencies:
       - supports-color
@@ -4255,7 +4234,7 @@ snapshots:
       '@typescript-eslint/types': 6.21.0
       '@typescript-eslint/typescript-estree': 6.21.0(typescript@5.0.2)
       '@typescript-eslint/visitor-keys': 6.21.0
-      debug: 4.4.1
+      debug: 4.4.3
       eslint: 8.0.0
     optionalDependencies:
       typescript: 5.0.2
@@ -4273,7 +4252,7 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 6.21.0
       '@typescript-eslint/visitor-keys': 6.21.0
-      debug: 4.4.1
+      debug: 4.4.3
       globby: 11.1.0
       is-glob: 4.0.3
       minimatch: 9.0.3
@@ -4471,7 +4450,7 @@ snapshots:
   autoprefixer@10.4.20(postcss@8.5.0):
     dependencies:
       browserslist: 4.25.1
-      caniuse-lite: 1.0.30001731
+      caniuse-lite: 1.0.30001792
       fraction.js: 4.3.7
       normalize-range: 0.1.2
       picocolors: 1.1.1
@@ -4521,7 +4500,7 @@ snapshots:
 
   browserslist@4.25.1:
     dependencies:
-      caniuse-lite: 1.0.30001731
+      caniuse-lite: 1.0.30001792
       electron-to-chromium: 1.5.192
       node-releases: 2.0.19
       update-browserslist-db: 1.1.3(browserslist@4.25.1)
@@ -4550,8 +4529,6 @@ snapshots:
   callsites@3.1.0: {}
 
   camelcase-css@2.0.1: {}
-
-  caniuse-lite@1.0.30001731: {}
 
   caniuse-lite@1.0.30001792: {}
 
@@ -4691,10 +4668,6 @@ snapshots:
     dependencies:
       ms: 2.1.3
 
-  debug@4.4.1:
-    dependencies:
-      ms: 2.1.3
-
   debug@4.4.3:
     dependencies:
       ms: 2.1.3
@@ -4782,7 +4755,7 @@ snapshots:
   engine.io-client@6.6.5:
     dependencies:
       '@socket.io/component-emitter': 3.1.2
-      debug: 4.4.1
+      debug: 4.4.3
       engine.io-parser: 5.2.3
       ws: 8.20.1
       xmlhttprequest-ssl: 2.1.2
@@ -4935,7 +4908,7 @@ snapshots:
   eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(eslint@8.0.0))(eslint@8.0.0):
     dependencies:
       '@nolyfill/is-core-module': 1.0.39
-      debug: 4.4.1
+      debug: 4.4.3
       eslint: 8.0.0
       get-tsconfig: 4.10.1
       is-bun-module: 2.0.0
@@ -5053,7 +5026,7 @@ snapshots:
       ajv: 6.12.6
       chalk: 4.1.2
       cross-spawn: 7.0.6
-      debug: 4.4.1
+      debug: 4.4.3
       doctrine: 3.0.0
       enquirer: 2.4.1
       escape-string-regexp: 4.0.0
@@ -5081,7 +5054,7 @@ snapshots:
       optionator: 0.9.4
       progress: 2.0.3
       regexpp: 3.2.0
-      semver: 7.7.2
+      semver: 7.8.0
       strip-ansi: 6.0.1
       strip-json-comments: 3.1.1
       text-table: 0.2.0
@@ -5119,7 +5092,7 @@ snapshots:
       content-type: 1.0.5
       cookie: 0.7.2
       cookie-signature: 1.2.2
-      debug: 4.4.1
+      debug: 4.4.3
       depd: 2.0.0
       encodeurl: 2.0.0
       escape-html: 1.0.3
@@ -5178,7 +5151,7 @@ snapshots:
 
   finalhandler@2.1.1:
     dependencies:
-      debug: 4.4.1
+      debug: 4.4.3
       encodeurl: 2.0.0
       escape-html: 1.0.3
       on-finished: 2.4.1
@@ -5553,7 +5526,7 @@ snapshots:
       lodash.isstring: 4.0.1
       lodash.once: 4.1.1
       ms: 2.1.3
-      semver: 7.7.2
+      semver: 7.8.0
 
   jsx-ast-utils@3.3.5:
     dependencies:
@@ -5662,8 +5635,6 @@ snapshots:
       any-promise: 1.3.0
       object-assign: 4.1.1
       thenify-all: 1.6.0
-
-  nanoid@3.3.11: {}
 
   nanoid@3.3.12: {}
 
@@ -5849,7 +5820,7 @@ snapshots:
 
   postcss@8.5.0:
     dependencies:
-      nanoid: 3.3.11
+      nanoid: 3.3.12
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
@@ -6030,7 +6001,7 @@ snapshots:
 
   router@2.2.0:
     dependencies:
-      debug: 4.4.1
+      debug: 4.4.3
       depd: 2.0.0
       is-promise: 4.0.0
       parseurl: 1.3.3
@@ -6070,8 +6041,6 @@ snapshots:
       loose-envify: 1.4.0
 
   semver@6.3.1: {}
-
-  semver@7.7.2: {}
 
   semver@7.8.0: {}
 
@@ -6197,7 +6166,7 @@ snapshots:
   socket.io-client@4.8.3:
     dependencies:
       '@socket.io/component-emitter': 3.1.2
-      debug: 4.4.1
+      debug: 4.4.3
       engine.io-client: 6.6.5
       socket.io-parser: 4.2.5
     transitivePeerDependencies:
@@ -6208,7 +6177,7 @@ snapshots:
   socket.io-parser@4.2.5:
     dependencies:
       '@socket.io/component-emitter': 3.1.2
-      debug: 4.4.1
+      debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
 
