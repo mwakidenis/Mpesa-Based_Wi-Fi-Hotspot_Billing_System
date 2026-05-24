@@ -1,6 +1,6 @@
 # Hotspot Management System
 
-A comprehensive WiFi billing system with M-Pesa integration, loan management, and MikroTik hotspot control.
+A joint of 6 collaborators bringing to you a comprehensive WiFi billing system with M-Pesa integration, loan management, and MikroTik hotspot control.
  
 ## Screenshots
 
