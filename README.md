@@ -420,3 +420,7 @@ I extend my heartfelt gratitude for any invaluable contribution to this project!
 
 For support, strictly create an issue in the GitHub repository. Am done up to the point of testing with real Mikrotik RB750UPr, Currently am working on DDOS management on the system.
 Contact me only for paid consultations regarding Mpesa-Based_Wi-Fi-Hotspot_Billing_System repository.
+
+## Stargazers
+
+[![Stargazers](https://api.star-history.com/svg?repos=mwakidenis/Mpesa-Based_Wi-Fi-Hotspot_Billing_System&type=Date)](https://star-history.com/#mwakidenis/Mpesa-Based_Wi-Fi-Hotspot_Billing_System&Date)
