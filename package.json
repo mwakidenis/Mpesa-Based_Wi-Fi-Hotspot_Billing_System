@@ -54,7 +54,7 @@
     "node-fetch": "^3.3.2",
     "node-routeros": "^1.6.8",
     "pm2": "^7.0.0",
-    "prisma": "^6.15.0",
+    "prisma": "^6.19.3",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "socket.io": "^4.8.1",
