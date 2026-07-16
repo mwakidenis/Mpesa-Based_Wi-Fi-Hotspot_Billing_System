@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+title: Invoicify Pro
+message: If you use this software, please cite it using the metadata from this file.
+type: software
+authors:
+  - given-names: Denis
+    family-names: Mwaki
+    email: mwakidenice@gmail.com
+repository-code: "https://github.com/mwakidenis/Mpesa-Based_Wi-Fi-Hotspot_Billing_System"
+url: "https://github.com/mwakidenis/Mpesa-Based_Wi-Fi-Hotspot_Billing_System"
+abstract: Invoicify Pro is an M‑Pesa integrated billing system for Wi‑Fi hotspots, providing automated payment processing and user management.
+keywords:
+  - mpesa
+  - wifi
+  - hotspot
+  - billing
+  - payment
+license: MIT
