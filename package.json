@@ -47,7 +47,7 @@
     "express-validator": "^7.0.1",
     "helmet": "^7.2.0",
     "jsonwebtoken": "^9.0.2",
-    "moment": "^2.30.1",
+    "moment": "^2.31.0",
     "mysql2": "^3.23.1",
     "next": "^15.5.25",
     "node": "^23.9.0",
