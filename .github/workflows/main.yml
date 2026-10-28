@@ -1,0 +1,16 @@
+
+name: Test WebCheck Action
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run WebCheck Action
+        uses: mwakidenis/WebCheck-Action@v1.0.0
+        with:
+          url: https://example.com
