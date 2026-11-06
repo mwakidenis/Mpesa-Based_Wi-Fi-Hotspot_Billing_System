@@ -2,15 +2,33 @@ const express = require("express");
 const prisma = require("../config/prismaClient");
 const { whitelistMAC } = require("../config/mikrotik");
 const logger = require("../src/logger");
+const ddos = require("../services/ddosInstance");
 
 const router = express.Router();
 
 router.post("/mpesa/callback", async (req, res) => {
-  logger.info("M-Pesa Callback Received", { body: req.body });
+  const clientIp = ddos.clientIp(req);
+  logger.info("M-Pesa Callback Received", { body: req.body, ip: clientIp });
 
   const callbackData = req.body?.Body?.stkCallback;
   const checkoutId = callbackData?.CheckoutRequestID;
   const resultCode = callbackData?.ResultCode;
+
+  // Idempotency: reject duplicate M-Pesa callback delivery for the same checkout
+  if (checkoutId) {
+    const idempotency = ddos.checkMpesaIdempotency(checkoutId);
+    if (idempotency.duplicate) {
+      logger.warn("Duplicate M-Pesa callback detected (replay)", {
+        checkoutId,
+        ip: clientIp,
+        firstSeen: idempotency.firstSeen,
+      });
+      return res.status(200).json({
+        success: true,
+        message: "Duplicate callback acknowledged; no action taken",
+      });
+    }
+  }
 
   if (!callbackData || !checkoutId) {
     return res.status(400).json({ success: false, error: "Invalid callback payload" });
