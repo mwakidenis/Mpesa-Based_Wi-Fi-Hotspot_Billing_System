@@ -391,6 +391,90 @@ For issues, check:
 - Helmet.js security headers
 - CORS configuration
 
+## DDoS Protection & Rate Limiting
+
+The system implements a multi-layered DDoS and traffic abuse defense tailored for
+ISP / Wi-Fi Hotspot environments. All controls live in `services/ddosProtection.service.js`
+with a shared instance at `services/ddosInstance.js`.
+
+### Layer 1 — Sliding-window rate limiters
+
+| Route group | Limit | Window | Purpose |
+|-------------|-------|--------|---------|
+| `/api/auth/*` | 5 req | 15 min | Brute-force login/register protection |
+| `/pay`, `/api/mpesa/*` | 10 req | 1 min | STK Push spam prevention |
+| General API | 100 req | 15 min | API scraping / flood mitigation |
+
+Tune via `AUTH_RATE_LIMIT_MAX`, `PAYMENT_RATE_LIMIT_MAX`, `API_RATE_LIMIT_MAX`
+and their `*_WINDOW_MS` counterparts in `.env`.
+
+### Layer 2 — Auto-ban & escalation
+
+IPs exceeding `BAN_THRESHOLD` suspicious hits within `BAN_WINDOW_MS` are
+temporarily auto-banned (`BAN_TTL_MS`, escalating to `ESCALATE_BAN_TTL_MS` for
+repeat offenders). Bans are logged to `logs/security.log`. Trusted IPs
+(`TRUSTED_IPS`) bypass all limits.
+
+### Layer 3 — M-Pesa callback hardening
+
+- **Source IP whitelisting:** Only Safaricom Daraja callback IPs
+  (`MPESA_TRUSTED_IPS`, CIDR notation) may POST to `/api/mpesa/callback`.
+  Untrusted sources receive `403 Forbidden` and are logged.
+- **Idempotency / replay protection:** Duplicate callback delivery for the same
+  `CheckoutRequestID` within 5 minutes is acknowledged with `200` without
+  re-granting WiFi time or double-crediting.
+
+Set `MPESA_TRUSTED_IPS` to Safaricom's official ranges in production (default
+allows `127.0.0.1` for development only).
+
+### Layer 4 — Payload size protection
+
+All routes parse bodies with `express.json({ limit: '10kb' })`. Oversized
+payloads are rejected with `413 Payload Too Large` to prevent memory-exhaustion
+attacks.
+
+### Layer 5 — MikroTik circuit breaker
+
+If the RB750UPr router is unreachable or slow, the circuit breaker opens and
+returns `503` fast instead of blocking the Node event loop. It auto-recovers
+after `MIKROTIK_CIRCUIT_RECOVERY_MS`. Failures and state changes are logged.
+
+### Layer 6 — MAC/IP spoofing detection
+
+The hotspot shield middleware tracks MAC↔IP associations per client port.
+Rapid MAC cycling or IP↔MAC swapping triggers security-log events, and repeat
+suspects are auto-banned.
+
+### Security event logging
+
+All security events (bans, rejected callbacks, circuit opens, spoofing
+suspicions) are written to `logs/security.log` (JSON lines) and forwarded to
+the Winston logger.
+
+### Running the verification tests
+
+```bash
+node test_ddos_limits.js
+```
+
+This exercises rate-limit enforcement (429), payload rejection (413),
+auto-ban, trusted-IP bypass, M-Pesa idempotency/replay, and IP whitelisting.
+
+### Environment variables
+
+Add these to `.env` (see `.env.example` for full list):
+
+```env
+TRUST_PROXY=true
+TRUSTED_IPS=127.0.0.1
+MPESA_TRUSTED_IPS=197.231.184.0/24,127.0.0.1/32
+API_RATE_LIMIT_MAX=100
+AUTH_RATE_LIMIT_MAX=5
+PAYMENT_RATE_LIMIT_MAX=10
+BAN_THRESHOLD=100
+MIKROTIK_CIRCUIT_FAILURE_THRESHOLD=5
+```
+
 ## Contributing
 
 1. Fork the repository
